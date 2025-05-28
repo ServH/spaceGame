@@ -1,5 +1,5 @@
-// Mode Selector - V1.3
-// UI for selecting game modes before starting the game
+// Mode Selector - V1.3 Revised
+// Updated with correct timings and descriptions
 
 const ModeSelector = {
     // Selector state
@@ -43,7 +43,7 @@ const ModeSelector = {
         this.addSelectorStyles();
     },
 
-    // Build selector HTML
+    // Build selector HTML with updated descriptions
     buildSelectorHTML() {
         const modes = GameModes.getAvailableModes();
         
@@ -80,7 +80,7 @@ const ModeSelector = {
                     🎮 COMENZAR PARTIDA
                 </button>
                 <div class="controls-hint">
-                    <small>💡 Arrastra para enviar naves | Teclas para selección rápida</small>
+                    <small>💡 Arrastra para enviar naves | Teclas para selección rápida | Números 1-3 para cambiar modo</small>
                 </div>
             </div>
         `;
@@ -88,15 +88,15 @@ const ModeSelector = {
         return html;
     },
 
-    // Get mode-specific features text
+    // Get mode-specific features text (updated)
     getModeFeatures(modeId) {
         switch (modeId) {
             case 'classic':
-                return '<span class="feature">🎮 Gameplay original</span><span class="feature">⏰ Sin límite de tiempo</span>';
+                return '<span class="feature">🎮 Gameplay original</span><span class="feature">⏰ Sin límite de tiempo</span><span class="feature">🎯 Victoria por conquista</span>';
             case 'blitz':
-                return '<span class="feature">⚡ Producción 3x</span><span class="feature">🚀 Velocidad 2.5x</span><span class="feature">🏆 Múltiples victorias</span>';
+                return '<span class="feature">⚡ Producción 3x</span><span class="feature">🚀 Velocidad 2.5x</span><span class="feature">🏆 4 formas de ganar</span><span class="feature">📊 Dominación 85%</span>';
             case 'kingofhill':
-                return '<span class="feature">👑 Planeta central</span><span class="feature">⏱️ Control por 30s</span><span class="feature">🎯 Estrategia especial</span>';
+                return '<span class="feature">👑 Planeta fortificado</span><span class="feature">⏱️ Control por 45s</span><span class="feature">💪 +50% producción</span><span class="feature">🏰 +30% capacidad</span>';
             default:
                 return '';
         }
@@ -219,7 +219,7 @@ const ModeSelector = {
                 border: 2px solid #0066cc;
                 border-radius: 15px;
                 padding: 30px;
-                max-width: 600px;
+                max-width: 700px;
                 width: 90%;
                 box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
                 transform: scale(0.8);
