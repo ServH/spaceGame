@@ -6,7 +6,7 @@ const KingOfHill = {
     hillPlanet: null,
     currentController: null,
     controlStartTime: null,
-    controlDuration: 30000, // 30 seconds to win
+    controlDuration: 30000, // Default 30 seconds, can be overridden by game mode
     progressBar: null,
 
     // Visual elements
@@ -15,9 +15,14 @@ const KingOfHill = {
 
     // Initialize King of Hill mode
     init() {
+        // Get control duration from game mode if available
+        if (typeof GameModes !== 'undefined') {
+            this.controlDuration = GameModes.getKingOfHillTime();
+        }
+        
         this.createHillUI();
         this.setupHillPlanet();
-        console.log('👑 King of Hill mode initialized');
+        console.log(`👑 King of Hill mode initialized (${this.controlDuration / 1000}s to win)`);
     },
 
     // Setup the central hill planet
@@ -79,10 +84,15 @@ const KingOfHill = {
 
     // Add hill-specific CSS styles
     addHillStyles() {
+        // Check if styles already added
+        if (document.getElementById('hill-styles')) return;
+        
         const style = document.createElement('style');
+        style.id = 'hill-styles';
         style.textContent = `
             .hill-ring {
                 animation: hillPulse 2s infinite ease-in-out;
+                transform-origin: center;
             }
 
             @keyframes hillPulse {
@@ -256,9 +266,10 @@ const KingOfHill = {
             // Victory!
             console.log(`👑 ${this.currentController} wins by King of Hill!`);
             
-            // Trigger victory
+            // Trigger victory through GameEngine
             if (GameEngine && GameEngine.endGame) {
-                GameEngine.endGame(this.currentController);
+                const details = `Controlled hill for ${this.controlDuration / 1000} seconds`;
+                GameEngine.endGame(this.currentController, details);
             }
             
             return true;
@@ -304,6 +315,12 @@ const KingOfHill = {
         
         if (this.progressElement) {
             this.progressElement.remove();
+        }
+        
+        // Remove styles
+        const hillStyles = document.getElementById('hill-styles');
+        if (hillStyles) {
+            hillStyles.remove();
         }
         
         console.log('👑 King of Hill destroyed');
