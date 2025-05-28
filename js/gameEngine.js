@@ -1,4 +1,4 @@
-// Game Engine - Core game mechanics (restored original structure)
+// Game Engine - Core game mechanics (original working version)
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -13,14 +13,12 @@ const GameEngine = {
         this.assignInitialPlanets();
         this.assignKeyboardShortcuts();
         
-        // Initialize subsystems
-        if (window.Animations) Animations.init();
-        if (window.GameModes) GameModes.init(BalanceConfig.currentMode);
-        if (window.EnhancedAI) EnhancedAI.init();
+        // Initialize original systems
+        Animations.init();
+        EnhancedAI.init();
         
         UI.init();
-        if (window.InputManager) InputManager.init();
-        
+        InputManager.init();
         this.start();
     },
 
@@ -34,22 +32,30 @@ const GameEngine = {
     generatePlanets() {
         this.planets = [];
         const numPlanets = CONFIG.PLANETS.COUNT;
+        const minDistance = CONFIG.PLANETS.MIN_DISTANCE || 100;
         
         for (let i = 0; i < numPlanets; i++) {
-            const planet = new Planet(
-                Utils.randomBetween(80, 720),
-                Utils.randomBetween(80, 520),
-                Utils.randomBetween(CONFIG.PLANETS.MIN_CAPACITY, CONFIG.PLANETS.MAX_CAPACITY),
-                i
-            );
-            this.planets.push(planet);
+            let attempts = 0;
+            let planet;
+            
+            do {
+                planet = {
+                    x: Utils.randomBetween(80, 720),
+                    y: Utils.randomBetween(80, 520),
+                    capacity: Utils.randomBetween(CONFIG.PLANETS.MIN_CAPACITY, CONFIG.PLANETS.MAX_CAPACITY)
+                };
+                attempts++;
+            } while (attempts < 50 && this.planets.some(p => Utils.distance(p, planet) < minDistance));
+            
+            const newPlanet = new Planet(planet.x, planet.y, planet.capacity, i);
+            this.planets.push(newPlanet);
         }
         
         console.log(`Generated ${numPlanets} planets`);
     },
 
     assignInitialPlanets() {
-        const settings = BalanceConfig.getCurrentSettings();
+        const settings = BalanceConfig ? BalanceConfig.getCurrentSettings() : { startShips: 10 };
         
         // Player gets first planet
         this.planets[0].owner = 'player';
@@ -74,7 +80,7 @@ const GameEngine = {
             furthestPlanet.updateVisual();
         }
         
-        console.log(`🎯 ${BalanceConfig.currentMode || 'default'} mode - ${settings.startShips} starting ships`);
+        console.log(`🎯 Initial planets assigned`);
     },
 
     assignKeyboardShortcuts() {
@@ -99,14 +105,14 @@ const GameEngine = {
     update() {
         // Update planets
         this.planets.forEach(planet => {
-            if (planet.update) planet.update(CONFIG.GAME.UPDATE_INTERVAL);
+            planet.update(CONFIG.GAME.UPDATE_INTERVAL);
         });
         
         // Update fleets
-        if (window.FleetManager) FleetManager.update();
+        FleetManager.update();
         
         // Update UI
-        if (window.UI) UI.update();
+        UI.update();
         
         // Check victory conditions
         this.checkVictoryConditions();
@@ -127,7 +133,7 @@ const GameEngine = {
     endGame(message) {
         clearInterval(this.gameLoop);
         console.log('Game ended:', message);
-        if (window.UI) UI.setStatus(message, 5000);
+        UI.setStatus(message, 5000);
     },
 
     getPlanetById(id) {
@@ -138,23 +144,17 @@ const GameEngine = {
         return this.planets.find(p => p.assignedKey === key.toLowerCase());
     },
 
-    sendFleet(fromPlanet, toPlanet, shipCount = null) {
+    sendFleet(fromPlanet, toPlanet, shipCount) {
         if (!fromPlanet || !toPlanet || fromPlanet === toPlanet) return false;
         if (fromPlanet.owner !== 'player') return false;
         
         const shipsToSend = shipCount || Math.floor(fromPlanet.ships * 0.5);
-        const settings = BalanceConfig.getCurrentSettings();
-        const minShips = settings.minShipsToSend || 1;
-        
-        if (shipsToSend < minShips || fromPlanet.ships <= shipsToSend) return false;
+        if (shipsToSend < 1 || fromPlanet.ships <= shipsToSend) return false;
         
         fromPlanet.ships -= shipsToSend;
         fromPlanet.updateVisual();
         
-        if (window.FleetManager) {
-            FleetManager.createFleet(fromPlanet, toPlanet, shipsToSend, 'player');
-        }
-        
+        FleetManager.createFleet(fromPlanet, toPlanet, shipsToSend, 'player');
         return true;
     }
 };

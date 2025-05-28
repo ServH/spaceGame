@@ -1,26 +1,16 @@
-// Game Menu - V1.3 Mode selection and game start
+// Simple Game Menu - Minimal overlay for mode selection
 const GameMenu = {
     isVisible: false,
-    selectedMode: 'blitz',
+    selectedMode: 'classic',
 
     modes: {
         classic: {
-            name: 'Conquista Clásica',
-            description: 'Sin límite de tiempo. Conquista todos los planetas.',
-            timeLimit: 0,
-            features: ['Ritmo normal', 'Sin prisa', 'Victoria total']
+            name: 'Clásico',
+            description: 'Juego normal sin límite de tiempo'
         },
         blitz: {
             name: 'Blitz',
-            description: 'Partida rápida de 2 minutos. Mayoría de planetas gana.',
-            timeLimit: 120000,
-            features: ['Producción 2x', 'Movimiento rápido', '2 minutos']
-        },
-        kingOfHill: {
-            name: 'Rey de la Colina',
-            description: 'Controla el planeta central por 45 segundos.',
-            timeLimit: 180000,
-            features: ['Planeta especial', 'Control por tiempo', '3 minutos máx']
+            description: 'Partida rápida con producción 2x'
         }
     },
 
@@ -56,37 +46,31 @@ const GameMenu = {
                     border: 2px solid #00ff88;
                     border-radius: 10px;
                     padding: 40px;
-                    width: 600px;
-                    height: 500px;
                     text-align: center;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    box-sizing: border-box;
                 ">
-                    <div>
-                        <h1 style="color: #00ff88; margin: 0 0 30px 0;">SPACE CONQUEST</h1>
-                        <p style="margin: 0 0 30px 0; color: #ccc;">Selecciona modo de juego:</p>
-                        
-                        <div id="mode-buttons" style="margin-bottom: 30px;">
-                            ${Object.keys(this.modes).map(key => this.createModeButton(key)).join('')}
-                        </div>
-                    </div>
+                    <h1 style="color: #00ff88; margin-bottom: 30px;">SPACE CONQUEST</h1>
+                    <p style="margin-bottom: 30px; color: #ccc;">Selecciona modo:</p>
                     
-                    <div id="mode-info" style="
-                        background: rgba(0,50,0,0.3);
-                        border: 1px solid #00ff88;
-                        border-radius: 5px;
-                        padding: 20px;
-                        text-align: left;
-                        flex-grow: 1;
-                        margin-bottom: 30px;
-                        overflow-y: auto;
-                    ">
-                        ${this.getModeInfo(this.selectedMode)}
-                    </div>
+                    ${Object.keys(this.modes).map(key => `
+                        <button onclick="GameMenu.selectMode('${key}')" style="
+                            background: ${key === this.selectedMode ? '#00ff88' : 'transparent'};
+                            color: ${key === this.selectedMode ? 'black' : '#00ff88'};
+                            border: 2px solid #00ff88;
+                            padding: 15px 30px;
+                            margin: 10px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-family: inherit;
+                            font-weight: bold;
+                        ">${this.modes[key].name}</button>
+                    `).join('')}
                     
-                    <button id="start-game" style="
+                    <br><br>
+                    <p style="color: #ccc; font-size: 14px; margin-bottom: 20px;">
+                        ${this.modes[this.selectedMode].description}
+                    </p>
+                    
+                    <button onclick="GameMenu.startGame()" style="
                         background: #00ff88;
                         color: black;
                         border: none;
@@ -102,83 +86,17 @@ const GameMenu = {
         `;
 
         document.body.insertAdjacentHTML('beforeend', menuHTML);
-        this.attachEventListeners();
     },
 
-    createModeButton(modeKey) {
-        const mode = this.modes[modeKey];
-        const isSelected = modeKey === this.selectedMode;
-        
-        return `
-            <button class="mode-btn" data-mode="${modeKey}" style="
-                background: ${isSelected ? '#00ff88' : 'transparent'};
-                color: ${isSelected ? 'black' : '#00ff88'};
-                border: 2px solid #00ff88;
-                padding: 10px 20px;
-                margin: 5px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-family: inherit;
-                font-weight: bold;
-            ">${mode.name}</button>
-        `;
-    },
-
-    getModeInfo(modeKey) {
-        const mode = this.modes[modeKey];
-        return `
-            <h3 style="color: #00ff88; margin-top: 0;">${mode.name}</h3>
-            <p style="margin-bottom: 15px;">${mode.description}</p>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                ${mode.features.map(f => `
-                    <span style="
-                        background: rgba(0,255,136,0.2);
-                        padding: 4px 8px;
-                        border-radius: 3px;
-                        font-size: 12px;
-                    ">${f}</span>
-                `).join('')}
-            </div>
-        `;
-    },
-
-    attachEventListeners() {
-        // Mode selection
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.selectedMode = e.target.dataset.mode;
-                this.updateModeButtons();
-                this.updateModeInfo();
-            });
-        });
-
-        // Start game
-        document.getElementById('start-game').addEventListener('click', () => {
-            this.startGame();
-        });
-    },
-
-    updateModeButtons() {
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            const isSelected = btn.dataset.mode === this.selectedMode;
-            btn.style.background = isSelected ? '#00ff88' : 'transparent';
-            btn.style.color = isSelected ? 'black' : '#00ff88';
-        });
-    },
-
-    updateModeInfo() {
-        document.getElementById('mode-info').innerHTML = this.getModeInfo(this.selectedMode);
+    selectMode(mode) {
+        this.selectedMode = mode;
+        this.hide();
+        this.show(); // Refresh to update display
     },
 
     startGame() {
-        console.log(`🎮 Starting ${this.selectedMode} mode`);
+        console.log(`Starting ${this.selectedMode} mode`);
         this.hide();
-        
-        // Call Game controller to start with selected mode
-        if (window.Game && Game.startGameEngine) {
-            Game.startGameEngine(this.selectedMode);
-        } else {
-            console.error('Game controller not available');
-        }
+        Game.initializeGame(this.selectedMode);
     }
 };

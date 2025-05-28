@@ -1,11 +1,11 @@
-// Main Game Controller - V1.3 simplified approach
+// Main Game Controller - Restored original functionality
 const Game = {
     initialized: false,
 
     init() {
         if (this.initialized) return;
         
-        console.log('🚀 Initializing Space Game V1.3...');
+        console.log('🚀 Initializing Space Game...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -17,14 +17,15 @@ const Game = {
 
     start() {
         try {
-            console.log('⚙️ Starting game systems...');
-            
-            // Show game mode selection menu first
-            GameMenu.show();
-            console.log('🎮 Mode selection menu displayed');
+            // Show mode selection first, then initialize game
+            if (window.GameMenu) {
+                GameMenu.show();
+            } else {
+                this.initializeGame();
+            }
             
             this.initialized = true;
-            console.log('✅ Space Game V1.3 ready!');
+            console.log('✅ Game ready!');
             
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
@@ -32,25 +33,19 @@ const Game = {
         }
     },
 
-    // This will be called by GameMenu after mode selection
-    startGameEngine(selectedMode = 'classic') {
-        console.log(`🎯 Starting game with mode: ${selectedMode}`);
+    // Called by GameMenu or directly if no menu
+    initializeGame(selectedMode = 'classic') {
+        console.log('⚙️ Starting game systems...');
         
-        // Apply balance for selected mode
-        BalanceConfig.applyMode(selectedMode);
+        // Apply balance if available
+        if (window.BalanceConfig) {
+            BalanceConfig.applyMode(selectedMode);
+        }
         
-        // Initialize original game engine
-        this.initializeOriginalGame();
-    },
-
-    initializeOriginalGame() {
-        console.log('🔧 Initializing original game systems...');
-        
-        // Initialize systems in original order
+        // Initialize original game systems
         GameEngine.init();
         console.log('✅ Game engine initialized');
         
-        // Show initial instructions
         this.showWelcomeMessage();
     },
 
@@ -85,21 +80,19 @@ const Game = {
     restart() {
         console.log('🔄 Restarting game...');
         
-        // Clear existing game state if exists
-        if (window.FleetManager) FleetManager.clear();
-        if (window.GameEngine && GameEngine.planets) {
-            GameEngine.planets.forEach(planet => planet.destroy && planet.destroy());
-            GameEngine.planets = [];
-        }
+        // Clear existing game state
+        FleetManager.clear();
+        GameEngine.planets.forEach(planet => planet.destroy());
+        GameEngine.planets = [];
         
-        // Show menu again
-        GameMenu.show();
+        // Restart
+        this.initialized = false;
+        this.init();
     },
 
-    // Debug and development helpers
+    // Debug helpers
     debug: {
         logPlanetStats() {
-            if (!GameEngine.planets) return console.log('No planets initialized');
             console.table(GameEngine.planets.map(p => ({
                 id: p.id,
                 key: p.assignedKey,
@@ -111,7 +104,6 @@ const Game = {
         },
 
         logFleetStats() {
-            if (!FleetManager.fleets) return console.log('No fleets active');
             console.table(FleetManager.fleets.map(f => ({
                 ships: f.ships,
                 owner: f.owner,
@@ -125,7 +117,7 @@ const Game = {
         },
 
         givePlayerShips(planetId, amount) {
-            const planet = GameEngine.getPlanetById && GameEngine.getPlanetById(planetId);
+            const planet = GameEngine.getPlanetById(planetId);
             if (planet && planet.owner === 'player') {
                 planet.ships = Math.min(planet.capacity, planet.ships + amount);
                 planet.updateVisual();
@@ -134,7 +126,6 @@ const Game = {
         },
 
         winGame() {
-            if (!GameEngine.planets) return console.log('No game running');
             GameEngine.planets.forEach(planet => {
                 if (planet.owner === 'ai') {
                     planet.owner = 'player';
@@ -142,17 +133,6 @@ const Game = {
                 }
             });
             console.log('Debug: Player wins!');
-        },
-
-        showMenu() {
-            GameMenu.show();
-        },
-
-        testModes() {
-            console.log('Available modes:', Object.keys(GameMenu.modes));
-            Object.entries(GameMenu.modes).forEach(([key, mode]) => {
-                console.log(`${key}: ${mode.name} - ${mode.description}`);
-            });
         }
     }
 };
