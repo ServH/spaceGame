@@ -1,4 +1,4 @@
-// UI Manager - Enhanced with tooltips and better UX like SpaceIndustry
+// UI Manager - Updated for new layout structure
 const UI = {
     elements: {},
     tooltip: null,
@@ -8,7 +8,6 @@ const UI = {
         this.createTooltip();
         this.updateStats();
         this.showKeyboardInfo();
-        console.log('🎨 UI initialized');
     },
 
     cacheElements() {
@@ -24,20 +23,20 @@ const UI = {
 
     createTooltip() {
         this.tooltip = document.createElement('div');
-        this.tooltip.className = 'tooltip';
         this.tooltip.style.cssText = `
             position: fixed;
             background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 8px 10px;
+            border-radius: 4px;
             border: 1px solid #444;
             font-size: 12px;
             pointer-events: none;
             z-index: 1000;
             display: none;
-            max-width: 200px;
-            line-height: 1.4;
+            max-width: 180px;
+            line-height: 1.3;
+            font-family: 'Courier New', monospace;
         `;
         document.body.appendChild(this.tooltip);
     },
@@ -71,19 +70,13 @@ const UI = {
                     case 'ai': icon = '🔴'; break;
                     default: icon = '⚪'; break;
                 }
-                return `${planet.assignedKey}:${icon}(${planet.capacity})`;
+                return `${planet.assignedKey}:${icon}`;
             })
-            .join(' | ');
+            .join(' ');
         
         this.elements.shortcutsInfo.innerHTML = `
-            <div style="margin-bottom: 5px;">
-                <strong>Controles:</strong> 
-                Ratón: Arrastra desde tu planeta | 
-                Teclado: Tecla origen → Tecla destino
-            </div>
-            <div style="font-size: 11px; opacity: 0.8;">
-                ${planetInfo}
-            </div>
+            <strong>Controles:</strong> Ratón (arrastra) | Teclado (origen→destino) | 
+            <strong>Planetas:</strong> ${planetInfo}
         `;
     },
 
@@ -93,20 +86,17 @@ const UI = {
         this.tooltip.innerHTML = content;
         this.tooltip.style.display = 'block';
         
-        // Position tooltip
+        // Position away from cursor to avoid interference
         let finalX = x + 15;
-        let finalY = y - 10;
+        let finalY = y - 30;
         
-        // Keep tooltip on screen
+        // Keep on screen
         const rect = this.tooltip.getBoundingClientRect();
         if (finalX + rect.width > window.innerWidth) {
             finalX = x - rect.width - 15;
         }
         if (finalY < 0) {
-            finalY = y + 25;
-        }
-        if (finalY + rect.height > window.innerHeight) {
-            finalY = window.innerHeight - rect.height - 10;
+            finalY = y + 20;
         }
         
         this.tooltip.style.left = `${finalX}px`;
@@ -132,10 +122,9 @@ const UI = {
     },
 
     showGameEnd(winner) {
-        const message = winner === 'player' ? '¡Has Ganado!' : 'La IA ha Ganado';
+        const message = winner === 'player' ? '¡Victoria!' : 'Derrota';
         const color = winner === 'player' ? '#00ff88' : '#ff4444';
         
-        // Create end game overlay
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -149,36 +138,36 @@ const UI = {
             justify-content: center;
             z-index: 1000;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Courier New', monospace;
         `;
         
         const content = document.createElement('div');
         content.style.cssText = `
             text-align: center;
-            padding: 40px;
+            padding: 30px;
             background: rgba(0, 0, 0, 0.9);
             border: 2px solid ${color};
-            border-radius: 10px;
+            border-radius: 8px;
         `;
         
         content.innerHTML = `
-            <h2 style="font-size: 36px; margin: 0 0 20px 0; color: ${color};">${message}</h2>
-            <p style="font-size: 18px; margin: 0 0 30px 0;">La partida se reiniciará automáticamente en 5 segundos...</p>
+            <h2 style="font-size: 32px; margin: 0 0 15px 0; color: ${color};">${message}</h2>
+            <p style="font-size: 16px; margin: 0 0 20px 0;">Reiniciando en 3 segundos...</p>
             <button onclick="location.reload()" style="
-                padding: 10px 20px;
-                font-size: 16px;
+                padding: 8px 16px;
+                font-size: 14px;
                 background: ${color};
                 color: black;
                 border: none;
-                border-radius: 5px;
+                border-radius: 4px;
                 cursor: pointer;
+                font-family: inherit;
             ">Reiniciar Ahora</button>
         `;
         
         overlay.appendChild(content);
         document.body.appendChild(overlay);
         
-        // Auto reload after 5 seconds
-        setTimeout(() => location.reload(), 5000);
+        setTimeout(() => location.reload(), 3000);
     }
 };
