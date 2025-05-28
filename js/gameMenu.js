@@ -174,11 +174,11 @@ const GameMenu = {
         console.log(`🎮 Starting ${this.selectedMode} mode`);
         this.hide();
         
-        // Initialize game engine with selected mode
-        if (window.GameEngine && GameEngine.init) {
-            GameEngine.init(this.selectedMode);
+        // Call Game controller to start with selected mode
+        if (window.Game && Game.startGameEngine) {
+            Game.startGameEngine(this.selectedMode);
         } else {
-            console.error('GameEngine not available');
+            console.error('Game controller not available');
         }
     }
 };
