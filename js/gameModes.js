@@ -1,5 +1,5 @@
-// Game Modes System - V1.3
-// Modular system to handle different game modes and configurations
+// Game Modes System - V1.3 Revised
+// Fixed balance and mechanics based on user feedback
 
 const GameModes = {
     // Available game modes
@@ -22,22 +22,25 @@ const GameModes = {
         BLITZ: {
             id: 'blitz',
             name: 'Blitz',
-            description: 'Partidas rápidas de 90 segundos con ritmo acelerado',
-            duration: 90000, // 90 seconds
+            description: 'Partidas rápidas de 2 minutos con ritmo acelerado',
+            duration: 120000, // 2 minutes (was 90 seconds)
             settings: {
                 production: 3.0,
                 fleetSpeed: 2.5,
                 conquest: 2.0,
                 initialShips: 15,
                 kingOfHill: false,
-                victoryConditions: ['economic', 'domination', 'time', 'total_conquest']
+                victoryConditions: ['economic', 'domination', 'time', 'total_conquest'],
+                // Revised thresholds
+                dominationThreshold: 0.85, // 85% instead of 75%
+                economicRatio: 4.0 // 4:1 instead of 3:1
             }
         },
         
         KING_OF_HILL: {
             id: 'kingofhill',
             name: 'Rey de la Colina',
-            description: 'Controla el planeta central por 30 segundos para ganar',
+            description: 'Controla el planeta central fortificado por 45 segundos',
             duration: null,
             settings: {
                 production: 2.0,
@@ -45,7 +48,9 @@ const GameModes = {
                 conquest: 1.5,
                 initialShips: 12,
                 kingOfHill: true,
-                hillControlTime: 30000, // 30 seconds
+                hillControlTime: 45000, // 45 seconds instead of 30
+                hillProductionBonus: 1.5, // Hill planet produces 50% faster
+                hillCapacityBonus: 1.3, // Hill planet 30% larger capacity
                 victoryConditions: ['king_of_hill', 'total_conquest']
             }
         }
@@ -136,7 +141,31 @@ const GameModes = {
     // Get King of Hill control time
     getKingOfHillTime() {
         return this.currentMode && this.currentMode.settings.hillControlTime ? 
-               this.currentMode.settings.hillControlTime : 30000;
+               this.currentMode.settings.hillControlTime : 45000;
+    },
+
+    // Get domination threshold for current mode
+    getDominationThreshold() {
+        return this.currentMode && this.currentMode.settings.dominationThreshold ?
+               this.currentMode.settings.dominationThreshold : 0.75;
+    },
+
+    // Get economic victory ratio for current mode
+    getEconomicRatio() {
+        return this.currentMode && this.currentMode.settings.economicRatio ?
+               this.currentMode.settings.economicRatio : 3.0;
+    },
+
+    // Get hill bonuses
+    getHillBonuses() {
+        if (!this.currentMode || !this.currentMode.settings.kingOfHill) {
+            return { production: 1.0, capacity: 1.0 };
+        }
+        
+        return {
+            production: this.currentMode.settings.hillProductionBonus || 1.0,
+            capacity: this.currentMode.settings.hillCapacityBonus || 1.0
+        };
     },
 
     // Reset to default mode
@@ -156,7 +185,9 @@ const GameModes = {
             settings: this.currentMode.settings,
             hasTimer: this.hasFeature('timer'),
             hasKingOfHill: this.hasFeature('kingOfHill'),
-            victoryConditions: this.getVictoryConditions()
+            victoryConditions: this.getVictoryConditions(),
+            dominationThreshold: this.getDominationThreshold(),
+            economicRatio: this.getEconomicRatio()
         };
     }
 };
