@@ -1,4 +1,4 @@
-// Game configuration - Updated for full screen
+// Game configuration - V1.3 Enhanced with Balance System
 const CONFIG = {
     // Game settings - Dynamic canvas size
     GAME: {
@@ -54,6 +54,31 @@ const CONFIG = {
         assignments: {},
     },
 
+    // V1.3: Balance multipliers (applied by game modes)
+    BALANCE: {
+        PRODUCTION_MULTIPLIER: 1.0,
+        FLEET_SPEED_MULTIPLIER: 1.0,
+        CONQUEST_SPEED_MULTIPLIER: 1.0,
+        INITIAL_SHIPS: 10
+    },
+
+    // V1.3: Get effective values with balance multipliers
+    getEffectiveProductionBase() {
+        return this.PLANETS.PRODUCTION_BASE * this.BALANCE.PRODUCTION_MULTIPLIER;
+    },
+
+    getEffectiveFleetSpeed() {
+        return this.FLEET.SPEED * this.BALANCE.FLEET_SPEED_MULTIPLIER;
+    },
+
+    getEffectiveConquestTime() {
+        return this.PLANETS.CONQUEST_TIME / this.BALANCE.CONQUEST_SPEED_MULTIPLIER;
+    },
+
+    getInitialShips() {
+        return this.BALANCE.INITIAL_SHIPS;
+    },
+
     // Update dimensions on window resize
     updateDimensions() {
         this.GAME.CANVAS_WIDTH = window.innerWidth;
@@ -62,13 +87,55 @@ const CONFIG = {
         this.FLEET.SPEED = Math.min(window.innerWidth, window.innerHeight) * 0.15;
         this.VISUAL.PLANET_MIN_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.025;
         this.VISUAL.PLANET_MAX_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.045;
+    },
+
+    // V1.3: Apply balance settings from game mode
+    applyBalance(balanceSettings) {
+        if (!balanceSettings) return;
+        
+        // Store original values if not already stored
+        if (!this._originalValues) {
+            this._originalValues = {
+                PRODUCTION_BASE: this.PLANETS.PRODUCTION_BASE,
+                FLEET_SPEED: this.FLEET.SPEED,
+                CONQUEST_TIME: this.PLANETS.CONQUEST_TIME
+            };
+        }
+
+        // Apply multipliers
+        this.BALANCE = { ...this.BALANCE, ...balanceSettings };
+        
+        // Update actual config values
+        this.PLANETS.PRODUCTION_BASE = this._originalValues.PRODUCTION_BASE * this.BALANCE.PRODUCTION_MULTIPLIER;
+        this.FLEET.SPEED = this._originalValues.FLEET_SPEED * this.BALANCE.FLEET_SPEED_MULTIPLIER;
+        this.PLANETS.CONQUEST_TIME = this._originalValues.CONQUEST_TIME / this.BALANCE.CONQUEST_SPEED_MULTIPLIER;
+
+        console.log('⚙️ Applied balance settings:', this.BALANCE);
+    },
+
+    // V1.3: Reset to original values
+    resetBalance() {
+        if (this._originalValues) {
+            this.PLANETS.PRODUCTION_BASE = this._originalValues.PRODUCTION_BASE;
+            this.FLEET.SPEED = this._originalValues.FLEET_SPEED;
+            this.PLANETS.CONQUEST_TIME = this._originalValues.CONQUEST_TIME;
+        }
+        
+        this.BALANCE = {
+            PRODUCTION_MULTIPLIER: 1.0,
+            FLEET_SPEED_MULTIPLIER: 1.0,
+            CONQUEST_SPEED_MULTIPLIER: 1.0,
+            INITIAL_SHIPS: 10
+        };
+        
+        console.log('🔄 Reset balance to defaults');
     }
 };
 
 // Handle window resize
 window.addEventListener('resize', () => {
     CONFIG.updateDimensions();
-    if (GameEngine && GameEngine.canvas) {
+    if (typeof GameEngine !== 'undefined' && GameEngine.canvas) {
         GameEngine.setupCanvas();
     }
 });
