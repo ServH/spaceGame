@@ -1,18 +1,19 @@
-// Game configuration - Updated for full screen
+// Game configuration - V1.3 with defaults
 const CONFIG = {
-    // Game settings - Dynamic canvas size
+    // Game settings
     GAME: {
-        CANVAS_WIDTH: window.innerWidth,
-        CANVAS_HEIGHT: window.innerHeight,
+        CANVAS_WIDTH: 800,
+        CANVAS_HEIGHT: 600,
         TARGET_FPS: 60,
         UPDATE_INTERVAL: 16,
     },
 
     // Planet settings
     PLANETS: {
-        COUNT: 7,
-        CAPACITIES: [8, 10, 12, 15, 18, 20, 25],
-        MIN_DISTANCE: Math.min(window.innerWidth, window.innerHeight) * 0.15, // 15% of screen
+        COUNT: 8,
+        MIN_CAPACITY: 8,
+        MAX_CAPACITY: 25,
+        MIN_DISTANCE: 120,
         PRODUCTION_BASE: 0.8,
         PRODUCTION_MULTIPLIER: 0.15,
         CONQUEST_TIME: 2000,
@@ -20,7 +21,7 @@ const CONFIG = {
 
     // Fleet settings
     FLEET: {
-        SPEED: Math.min(window.innerWidth, window.innerHeight) * 0.15, // Scale with screen
+        SPEED: 80,
         MIN_SEND: 1,
     },
 
@@ -31,10 +32,10 @@ const CONFIG = {
         MIN_ATTACK_FORCE: 3,
     },
 
-    // Visual settings - Scale with screen size
+    // Visual settings
     VISUAL: {
-        PLANET_MIN_RADIUS: Math.min(window.innerWidth, window.innerHeight) * 0.025, // 2.5% of screen
-        PLANET_MAX_RADIUS: Math.min(window.innerWidth, window.innerHeight) * 0.045, // 4.5% of screen
+        PLANET_MIN_RADIUS: 15,
+        PLANET_MAX_RADIUS: 35,
         SHIP_TRAIL_LENGTH: 8,
         HOVER_GLOW: '#ffff00',
     },
@@ -50,25 +51,7 @@ const CONFIG = {
 
     // Keyboard assignments
     KEYBOARD: {
-        AVAILABLE_KEYS: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Q', 'W', 'E', 'R', 'T', 'Y'],
+        AVAILABLE_KEYS: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k'],
         assignments: {},
-    },
-
-    // Update dimensions on window resize
-    updateDimensions() {
-        this.GAME.CANVAS_WIDTH = window.innerWidth;
-        this.GAME.CANVAS_HEIGHT = window.innerHeight;
-        this.PLANETS.MIN_DISTANCE = Math.min(window.innerWidth, window.innerHeight) * 0.15;
-        this.FLEET.SPEED = Math.min(window.innerWidth, window.innerHeight) * 0.15;
-        this.VISUAL.PLANET_MIN_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.025;
-        this.VISUAL.PLANET_MAX_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.045;
     }
 };
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    CONFIG.updateDimensions();
-    if (GameEngine && GameEngine.canvas) {
-        GameEngine.setupCanvas();
-    }
-});
