@@ -1,4 +1,4 @@
-// Planet class - Enhanced with V1.2 animations
+// Planet class - V1.3 Enhanced with King of Hill bonuses
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -17,6 +17,10 @@ class Planet {
         // Production
         this.lastProduction = Date.now();
         this.productionRate = CONFIG.PLANETS.PRODUCTION_BASE + (capacity * CONFIG.PLANETS.PRODUCTION_MULTIPLIER);
+        
+        // V1.3: King of Hill properties
+        this.isHill = false;
+        this.hillProductionBonus = 1.0;
         
         // Visual
         this.element = null;
@@ -87,28 +91,56 @@ class Planet {
         this.element.setAttribute('fill', fill);
         this.textElement.textContent = Utils.formatNumber(this.ships);
         
-        if (this.isBeingConquered) {
+        // V1.3: Special styling for hill planets
+        if (this.isHill) {
+            this.element.setAttribute('stroke', '#ffd700');
+            this.element.setAttribute('stroke-width', '2');
+            this.element.setAttribute('stroke-opacity', '0.7');
+        } else if (this.isBeingConquered) {
             this.element.setAttribute('stroke', '#ffff00');
             this.element.setAttribute('stroke-width', '2');
+            this.element.removeAttribute('stroke-opacity');
         } else if (!this._currentlyHovered) {
             this.element.removeAttribute('stroke');
             this.element.removeAttribute('stroke-width');
+            this.element.removeAttribute('stroke-opacity');
         }
     }
 
+    // V1.3: Get effective production rate with hill bonus
+    getEffectiveProductionRate() {
+        let rate = this.productionRate;
+        
+        // Apply hill bonus if this is a hill planet
+        if (this.isHill && this.hillProductionBonus) {
+            rate *= this.hillProductionBonus;
+        }
+        
+        return rate;
+    }
+
     update(deltaTime) {
-        // Ship production
+        // Ship production with hill bonus
         if (this.owner !== 'neutral' && this.ships < this.capacity) {
             const now = Date.now();
             const timeDiff = (now - this.lastProduction) / 1000;
             
-            if (timeDiff >= 1 / this.productionRate) {
+            // Use effective production rate
+            const effectiveRate = this.getEffectiveProductionRate();
+            
+            if (timeDiff >= 1 / effectiveRate) {
                 this.ships = Math.min(this.capacity, this.ships + 1);
                 this.lastProduction = now;
                 this.updateVisual();
                 
-                // V1.2: Production pulse animation
-                Animations.createProductionPulse(this);
+                // V1.2: Production pulse animation (enhanced for hill)
+                if (typeof Animations !== 'undefined') {
+                    if (this.isHill) {
+                        Animations.createHillProductionPulse(this);
+                    } else {
+                        Animations.createProductionPulse(this);
+                    }
+                }
             }
         }
         
@@ -130,7 +162,9 @@ class Planet {
             this.updateVisual();
             
             // V1.2: Add conquest animation
-            Animations.createConquestProgress(this);
+            if (typeof Animations !== 'undefined') {
+                Animations.createConquestProgress(this);
+            }
         }
     }
 
@@ -143,7 +177,9 @@ class Planet {
         this.updateVisual();
         
         // V1.2: Remove conquest animation
-        Animations.removeAnimation(`conquest_${this.id}`);
+        if (typeof Animations !== 'undefined') {
+            Animations.removeAnimation(`conquest_${this.id}`);
+        }
         
         UI.updateStats();
     }
@@ -153,14 +189,18 @@ class Planet {
             this.isBeingConquered = false;
             this.conqueror = null;
             this.conquestTimer = 0;
-            Animations.removeAnimation(`conquest_${this.id}`);
+            if (typeof Animations !== 'undefined') {
+                Animations.removeAnimation(`conquest_${this.id}`);
+            }
         }
         
         if (this.owner === attacker) {
             this.ships = Math.min(this.capacity, this.ships + attackerShips);
         } else {
             // V1.2: Add battle animation
-            Animations.createBattleEffect(this);
+            if (typeof Animations !== 'undefined') {
+                Animations.createBattleEffect(this);
+            }
             
             if (attackerShips > this.ships) {
                 this.owner = attacker;
@@ -194,17 +234,52 @@ class Planet {
         
         if (hovered) {
             this.element.setAttribute('stroke', CONFIG.VISUAL.HOVER_GLOW);
+            this.element.setAttribute('stroke-width', '3');
+            this.element.removeAttribute('stroke-opacity');
+        } else if (this.isHill) {
+            // Restore hill styling
+            this.element.setAttribute('stroke', '#ffd700');
             this.element.setAttribute('stroke-width', '2');
-        } else if (!this.isBeingConquered) {
+            this.element.setAttribute('stroke-opacity', '0.7');
+        } else if (this.isBeingConquered) {
+            this.element.setAttribute('stroke', '#ffff00');
+            this.element.setAttribute('stroke-width', '2');
+            this.element.removeAttribute('stroke-opacity');
+        } else {
             this.element.removeAttribute('stroke');
             this.element.removeAttribute('stroke-width');
+            this.element.removeAttribute('stroke-opacity');
         }
+    }
+
+    // V1.3: Get planet info for tooltip (enhanced)
+    getTooltipInfo() {
+        const ownerName = this.owner === 'player' ? 'Jugador' : 
+                         this.owner === 'ai' ? 'IA' : 'Neutral';
+        
+        let info = `<strong>${ownerName}</strong><br>`;
+        info += `Naves: ${this.ships}/${this.capacity}<br>`;
+        
+        if (this.owner !== 'neutral') {
+            const effectiveRate = this.getEffectiveProductionRate();
+            info += `Producción: ${effectiveRate.toFixed(1)}/s<br>`;
+        }
+        
+        if (this.isHill) {
+            const bonus = Math.round((this.hillProductionBonus - 1) * 100);
+            info += `<span style="color: #ffd700;">👑 COLINA</span><br>`;
+            info += `<span style="color: #ffd700;">+${bonus}% producción</span>`;
+        }
+        
+        return info;
     }
 
     destroy() {
         if (this.element) this.element.remove();
         if (this.textElement) this.textElement.remove();
         if (this.keyElement) this.keyElement.remove();
-        Animations.removeAnimation(`conquest_${this.id}`);
+        if (typeof Animations !== 'undefined') {
+            Animations.removeAnimation(`conquest_${this.id}`);
+        }
     }
 }
