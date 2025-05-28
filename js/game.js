@@ -1,4 +1,4 @@
-// Main Game Controller - V1.3 with Mode Selection
+// Main Game Controller - V1.3 simplified approach
 const Game = {
     initialized: false,
 
@@ -19,7 +19,7 @@ const Game = {
         try {
             console.log('⚙️ Starting game systems...');
             
-            // Show game mode selection menu
+            // Show game mode selection menu first
             GameMenu.show();
             console.log('🎮 Mode selection menu displayed');
             
@@ -30,6 +30,34 @@ const Game = {
             console.error('❌ Failed to initialize game:', error);
             this.showErrorMessage(error);
         }
+    },
+
+    // This will be called by GameMenu after mode selection
+    startGameEngine(selectedMode = 'classic') {
+        console.log(`🎯 Starting game with mode: ${selectedMode}`);
+        
+        // Apply balance for selected mode
+        BalanceConfig.applyMode(selectedMode);
+        
+        // Initialize original game engine
+        this.initializeOriginalGame();
+    },
+
+    initializeOriginalGame() {
+        console.log('🔧 Initializing original game systems...');
+        
+        // Initialize systems in original order
+        GameEngine.init();
+        console.log('✅ Game engine initialized');
+        
+        // Show initial instructions
+        this.showWelcomeMessage();
+    },
+
+    showWelcomeMessage() {
+        setTimeout(() => {
+            UI.setStatus('¡Bienvenido! Conquista todos los planetas para ganar', 3000);
+        }, 500);
     },
 
     showErrorMessage(error) {
