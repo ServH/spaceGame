@@ -1,4 +1,4 @@
-// UI Manager - V1.3 Enhanced with Victory Details and Mode Info
+// UI Manager - V1.3 Revised with Fixed End Game Buttons
 const UI = {
     elements: {},
     tooltip: null,
@@ -160,7 +160,7 @@ const UI = {
         }
     },
 
-    // V1.3: Enhanced game end with victory details
+    // V1.3: Fixed game end with working buttons
     showGameEnd(winner, details = '') {
         const message = winner === 'player' ? '¡Victoria!' : 
                        winner === 'ai' ? 'Derrota' : 'Empate';
@@ -170,6 +170,7 @@ const UI = {
                      winner === 'ai' ? '💀' : '🤝';
         
         const overlay = document.createElement('div');
+        overlay.id = 'gameEndOverlay';
         overlay.style.cssText = `
             position: fixed;
             top: 0;
@@ -235,7 +236,7 @@ const UI = {
             </div>` : ''}
             
             <div style="margin-top: 30px;">
-                <button onclick="Game.restart()" style="
+                <button id="newGameSameMode" style="
                     padding: 12px 24px;
                     font-size: 16px;
                     background: ${color};
@@ -248,9 +249,9 @@ const UI = {
                     margin-right: 10px;
                     transition: transform 0.2s ease;
                 " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    🎮 Nueva Partida
+                    🎮 Nueva Partida (${mode ? mode.name : 'Clásico'})
                 </button>
-                <button onclick="location.reload()" style="
+                <button id="changeModeBtn" style="
                     padding: 12px 24px;
                     font-size: 16px;
                     background: rgba(255, 255, 255, 0.2);
@@ -261,12 +262,12 @@ const UI = {
                     font-family: inherit;
                     transition: background 0.2s ease;
                 " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
-                    🔄 Recargar
+                    🔄 Cambiar Modo
                 </button>
             </div>
             
             <p style="font-size: 12px; margin: 20px 0 0 0; color: #888888;">
-                Reinicio automático en <span id="countdown">5</span> segundos...
+                Reinicio automático en <span id="countdown">8</span> segundos...
             </p>
         `;
         
@@ -283,8 +284,24 @@ const UI = {
         overlay.appendChild(content);
         document.body.appendChild(overlay);
         
-        // Countdown
-        let countdown = 5;
+        // Add event listeners for buttons
+        const newGameBtn = document.getElementById('newGameSameMode');
+        const changeModeBtn = document.getElementById('changeModeBtn');
+        
+        if (newGameBtn) {
+            newGameBtn.addEventListener('click', () => {
+                this.startNewGameSameMode();
+            });
+        }
+        
+        if (changeModeBtn) {
+            changeModeBtn.addEventListener('click', () => {
+                this.showModeSelector();
+            });
+        }
+        
+        // Countdown with longer time
+        let countdown = 8;
         const countdownInterval = setInterval(() => {
             countdown--;
             const countdownElement = document.getElementById('countdown');
@@ -293,9 +310,106 @@ const UI = {
             }
             if (countdown <= 0) {
                 clearInterval(countdownInterval);
-                Game.restart();
+                this.startNewGameSameMode();
             }
         }, 1000);
+    },
+
+    // V1.3: Start new game with same mode
+    startNewGameSameMode() {
+        console.log('🎮 Starting new game with same mode');
+        
+        // Remove game end overlay
+        const overlay = document.getElementById('gameEndOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+        
+        // Stop any running timers
+        if (typeof GameTimer !== 'undefined') {
+            GameTimer.stop();
+        }
+        
+        // Cleanup King of Hill
+        if (typeof KingOfHill !== 'undefined') {
+            KingOfHill.destroy();
+        }
+        
+        // Clear game state
+        if (typeof FleetManager !== 'undefined') {
+            FleetManager.clear();
+        }
+        
+        if (GameEngine.planets) {
+            GameEngine.planets.forEach(planet => {
+                if (planet.destroy) planet.destroy();
+            });
+            GameEngine.planets = [];
+        }
+        
+        // Remove mode indicator
+        const modeIndicator = document.getElementById('modeIndicator');
+        if (modeIndicator) {
+            modeIndicator.remove();
+        }
+        
+        // Restart with current mode
+        const currentMode = GameModes.currentMode;
+        if (currentMode) {
+            console.log(`🔄 Restarting with ${currentMode.name} mode`);
+            GameModes.applyModeSettings();
+            Game.setupModeFeatures();
+            GameEngine.isRunning = false;
+            GameEngine.init();
+        } else {
+            console.log('🔄 Restarting with default mode');
+            GameEngine.isRunning = false;
+            GameEngine.init();
+        }
+    },
+
+    // V1.3: Show mode selector
+    showModeSelector() {
+        console.log('🎯 Showing mode selector');
+        
+        // Remove game end overlay
+        const overlay = document.getElementById('gameEndOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+        
+        // Stop any running timers
+        if (typeof GameTimer !== 'undefined') {
+            GameTimer.stop();
+        }
+        
+        // Cleanup King of Hill
+        if (typeof KingOfHill !== 'undefined') {
+            KingOfHill.destroy();
+        }
+        
+        // Clear game state
+        if (typeof FleetManager !== 'undefined') {
+            FleetManager.clear();
+        }
+        
+        if (GameEngine.planets) {
+            GameEngine.planets.forEach(planet => {
+                if (planet.destroy) planet.destroy();
+            });
+            GameEngine.planets = [];
+        }
+        
+        // Remove mode indicator
+        const modeIndicator = document.getElementById('modeIndicator');
+        if (modeIndicator) {
+            modeIndicator.remove();
+        }
+        
+        // Show mode selector
+        if (typeof ModeSelector !== 'undefined') {
+            ModeSelector.show();
+        }
     },
 
     // V1.3: Show victory progress for debugging
@@ -304,7 +418,5 @@ const UI = {
         
         const progress = VictoryConditions.getVictoryProgress();
         console.log('Victory Progress:', progress);
-        
-        // Could add visual progress indicators here in the future
     }
 };
