@@ -93,20 +93,18 @@ const GameModes = {
 
         const settings = this.currentMode.settings;
         
-        // Update CONFIG with mode multipliers
-        CONFIG.BALANCE = {
+        // Create balance settings object
+        const balanceSettings = {
             PRODUCTION_MULTIPLIER: settings.production,
             FLEET_SPEED_MULTIPLIER: settings.fleetSpeed,
             CONQUEST_SPEED_MULTIPLIER: settings.conquest,
             INITIAL_SHIPS: settings.initialShips
         };
 
-        // Apply to existing config values
-        CONFIG.PLANETS.PRODUCTION_BASE *= settings.production;
-        CONFIG.FLEET.SPEED *= settings.fleetSpeed;
-        CONFIG.PLANETS.CONQUEST_TIME /= settings.conquest;
+        // Apply to CONFIG
+        CONFIG.applyBalance(balanceSettings);
 
-        console.log(`⚙️ Applied ${this.currentMode.name} settings:`, CONFIG.BALANCE);
+        console.log(`⚙️ Applied ${this.currentMode.name} settings:`, balanceSettings);
     },
 
     // Check if current mode supports a feature
@@ -135,10 +133,31 @@ const GameModes = {
         return this.currentMode ? this.currentMode.duration : null;
     },
 
+    // Get King of Hill control time
+    getKingOfHillTime() {
+        return this.currentMode && this.currentMode.settings.hillControlTime ? 
+               this.currentMode.settings.hillControlTime : 30000;
+    },
+
     // Reset to default mode
     resetToDefault() {
         this.currentMode = this.modes.CLASSIC;
+        CONFIG.resetBalance();
         console.log('🔄 Reset to Classic mode');
+    },
+
+    // Get mode info for debugging
+    getModeInfo() {
+        if (!this.currentMode) return null;
+        
+        return {
+            id: this.currentMode.id,
+            name: this.currentMode.name,
+            settings: this.currentMode.settings,
+            hasTimer: this.hasFeature('timer'),
+            hasKingOfHill: this.hasFeature('kingOfHill'),
+            victoryConditions: this.getVictoryConditions()
+        };
     }
 };
 
