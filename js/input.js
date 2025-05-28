@@ -1,4 +1,4 @@
-// Input Manager - Fixed drag & drop and keyboard controls
+// Input Manager - Fixed hover conflicts and canvas positioning
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -9,6 +9,7 @@ const InputManager = {
         selectedPlanet: null,
         lastKeyTime: 0
     },
+    hoverTimeout: null,
 
     init() {
         this.setupMouseEvents();
@@ -25,9 +26,9 @@ const InputManager = {
         canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e), false);
         canvas.addEventListener('mouseleave', () => this.handleMouseLeave(), false);
         
-        // Hover for tooltips
-        canvas.addEventListener('mousemove', Utils.debounce((e) => this.handleHover(e), 50));
-        canvas.addEventListener('mouseleave', () => this.hideTooltip());
+        // Separate hover handling with debounce to prevent conflicts
+        canvas.addEventListener('mouseenter', () => this.clearHoverEffects());
+        canvas.addEventListener('mouseleave', () => this.clearHoverEffects());
     },
 
     setupKeyboardEvents() {
@@ -36,10 +37,10 @@ const InputManager = {
 
     handleMouseDown(e) {
         e.preventDefault();
+        this.clearHoverEffects(); // Clear hover when starting drag
+        
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
-        
-        console.log(`Mouse down at ${pos.x}, ${pos.y}`, planet);
         
         if (planet && planet.owner === 'player' && planet.ships > 0) {
             this.startDrag(planet, pos);
@@ -49,6 +50,9 @@ const InputManager = {
     handleMouseMove(e) {
         if (this.dragState.isDragging) {
             this.updateDrag(e);
+        } else {
+            // Only handle hover when not dragging
+            this.handleHover(e);
         }
     },
 
@@ -59,32 +63,50 @@ const InputManager = {
     },
 
     handleMouseLeave() {
+        this.clearHoverEffects();
         if (this.dragState.isDragging) {
             this.cancelDrag();
         }
-        this.hideTooltip();
     },
 
     handleHover(e) {
-        if (this.dragState.isDragging) return;
-        
-        const pos = this.getCanvasPosition(e);
-        const planet = GameEngine.getPlanetAt(pos.x, pos.y);
-        
-        // Clear previous hovers
-        GameEngine.planets.forEach(p => p.setHovered(false));
-        
-        if (planet) {
-            planet.setHovered(true);
-            this.showPlanetTooltip(planet, e.clientX, e.clientY);
-        } else {
-            this.hideTooltip();
+        // Clear existing timeout
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
         }
+
+        // Debounce hover to prevent conflicts
+        this.hoverTimeout = setTimeout(() => {
+            const pos = this.getCanvasPosition(e);
+            const planet = GameEngine.getPlanetAt(pos.x, pos.y);
+            
+            // Clear all hover effects first
+            GameEngine.planets.forEach(p => p.setHovered(false));
+            
+            if (planet) {
+                planet.setHovered(true);
+                this.showPlanetTooltip(planet, e.clientX, e.clientY);
+            } else {
+                this.hideTooltip();
+            }
+        }, 50); // 50ms debounce
+    },
+
+    clearHoverEffects() {
+        if (this.hoverTimeout) {
+            clearTimeout(this.hoverTimeout);
+            this.hoverTimeout = null;
+        }
+        
+        GameEngine.planets.forEach(p => p.setHovered(false));
+        this.hideTooltip();
     },
 
     getCanvasPosition(e) {
         const canvas = document.getElementById('gameCanvas');
         const rect = canvas.getBoundingClientRect();
+        
+        // Use actual window dimensions for scaling
         const scaleX = CONFIG.GAME.CANVAS_WIDTH / rect.width;
         const scaleY = CONFIG.GAME.CANVAS_HEIGHT / rect.height;
         
@@ -110,6 +132,7 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('stroke-width', '3');
         this.dragState.dragLine.setAttribute('stroke-dasharray', '5,5');
         this.dragState.dragLine.setAttribute('opacity', '0.8');
+        this.dragState.dragLine.classList.add('drag-line');
         svg.appendChild(this.dragState.dragLine);
     },
 
@@ -124,8 +147,6 @@ const InputManager = {
     endDrag(e) {
         const pos = this.getCanvasPosition(e);
         const targetPlanet = GameEngine.getPlanetAt(pos.x, pos.y);
-        
-        console.log(`Ending drag at planet:`, targetPlanet);
         
         if (targetPlanet && targetPlanet !== this.dragState.startPlanet) {
             this.executeFleetCommand(this.dragState.startPlanet, targetPlanet);
@@ -162,7 +183,6 @@ const InputManager = {
         const now = Date.now();
         
         if (!this.keyboardState.selectedPlanet) {
-            // First selection
             if (planet.owner === 'player' && planet.ships > 0) {
                 this.keyboardState.selectedPlanet = planet;
                 this.keyboardState.lastKeyTime = now;
@@ -175,7 +195,6 @@ const InputManager = {
                 }, 3000);
             }
         } else {
-            // Second selection
             if (planet !== this.keyboardState.selectedPlanet) {
                 this.executeFleetCommand(this.keyboardState.selectedPlanet, planet);
             }
@@ -222,7 +241,6 @@ const InputManager = {
     },
 
     showFleetLaunch(origin, destination, ships) {
-        // Visual feedback
         const svg = document.getElementById('gameCanvas');
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', origin.x);
@@ -234,7 +252,6 @@ const InputManager = {
         line.setAttribute('opacity', '0.8');
         svg.appendChild(line);
         
-        // Fade out
         let opacity = 0.8;
         const fadeInterval = setInterval(() => {
             opacity -= 0.1;
