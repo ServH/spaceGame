@@ -66,54 +66,100 @@ const KingOfHill = {
         crown.textContent = '👑';
         crown.classList.add('hill-crown');
 
-        // Progress circle for control
-        const progressCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        progressCircle.setAttribute('cx', this.hillPlanet.x);
-        progressCircle.setAttribute('cy', this.hillPlanet.y);
-        progressCircle.setAttribute('r', this.hillPlanet.radius + 12);
-        progressCircle.setAttribute('fill', 'none');
-        progressCircle.setAttribute('stroke', '#00ff88');
-        progressCircle.setAttribute('stroke-width', '4');
-        progressCircle.setAttribute('stroke-dasharray', '0,1000');
-        progressCircle.classList.add('hill-progress');
-        progressCircle.style.display = 'none';
-
-        // Add to canvas
+        // Add to SVG
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
             canvas.appendChild(hillRing);
             canvas.appendChild(crown);
-            canvas.appendChild(progressCircle);
         }
 
-        this.progressElement = progressCircle;
-
-        // Animate ring
-        this.animateHillRing(hillRing);
+        // Add CSS animation
+        this.addHillStyles();
     },
 
-    // Animate the hill ring
-    animateHillRing(ring) {
-        let offset = 0;
-        setInterval(() => {
-            offset += 1;
-            ring.setAttribute('stroke-dashoffset', offset);
-        }, 50);
+    // Add hill-specific CSS styles
+    addHillStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .hill-ring {
+                animation: hillPulse 2s infinite ease-in-out;
+            }
+
+            @keyframes hillPulse {
+                0%, 100% { 
+                    stroke-opacity: 1; 
+                    transform: scale(1);
+                }
+                50% { 
+                    stroke-opacity: 0.5; 
+                    transform: scale(1.1);
+                }
+            }
+
+            .hill-crown {
+                animation: crownBob 3s infinite ease-in-out;
+            }
+
+            @keyframes crownBob {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-5px); }
+            }
+
+            .hill-progress {
+                position: absolute;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                border: 2px solid #ffd700;
+                border-radius: 8px;
+                padding: 10px 15px;
+                color: #ffffff;
+                font-size: 14px;
+                z-index: 100;
+                min-width: 200px;
+                text-align: center;
+            }
+
+            .hill-progress.hidden {
+                display: none;
+            }
+
+            .hill-control-bar {
+                width: 100%;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                overflow: hidden;
+                margin-top: 8px;
+            }
+
+            .hill-control-fill {
+                height: 100%;
+                border-radius: 4px;
+                transition: width 0.1s ease;
+            }
+
+            .hill-control-fill.player {
+                background: linear-gradient(90deg, #00ff88, #00cc66);
+            }
+
+            .hill-control-fill.ai {
+                background: linear-gradient(90deg, #ff4444, #cc3333);
+            }
+        `;
+        document.head.appendChild(style);
     },
 
-    // Create King of Hill UI
+    // Create hill UI elements
     createHillUI() {
         const hillUI = document.createElement('div');
-        hillUI.id = 'kingOfHillUI';
-        hillUI.className = 'king-of-hill-ui';
+        hillUI.id = 'hillProgress';
+        hillUI.className = 'hill-progress hidden';
         hillUI.innerHTML = `
-            <div class="hill-status">
-                <div class="hill-title">👑 REY DE LA COLINA</div>
-                <div class="hill-controller" id="hillController">Nadie controla la colina</div>
-                <div class="hill-progress-bar">
-                    <div class="hill-progress-fill" id="hillProgressFill"></div>
-                </div>
-                <div class="hill-time" id="hillTimeRemaining">30s para ganar</div>
+            <div id="hillControllerText">Colina neutral</div>
+            <div class="hill-control-bar">
+                <div class="hill-control-fill" id="hillControlFill"></div>
             </div>
         `;
 
@@ -123,213 +169,144 @@ const KingOfHill = {
             uiOverlay.appendChild(hillUI);
         }
 
-        // Add styles
-        this.addHillStyles();
-    },
-
-    // Add King of Hill CSS styles
-    addHillStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            .king-of-hill-ui {
-                position: absolute;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.9);
-                border: 2px solid #ffd700;
-                border-radius: 10px;
-                padding: 15px 20px;
-                color: #ffffff;
-                font-family: 'Courier New', monospace;
-                z-index: 100;
-                min-width: 200px;
-            }
-
-            .hill-title {
-                text-align: center;
-                font-size: 16px;
-                font-weight: bold;
-                color: #ffd700;
-                margin-bottom: 8px;
-            }
-
-            .hill-controller {
-                text-align: center;
-                font-size: 14px;
-                margin-bottom: 8px;
-            }
-
-            .hill-controller.player-control {
-                color: #00ff88;
-            }
-
-            .hill-controller.ai-control {
-                color: #ff4444;
-            }
-
-            .hill-progress-bar {
-                width: 100%;
-                height: 8px;
-                background: rgba(255, 255, 255, 0.3);
-                border-radius: 4px;
-                overflow: hidden;
-                margin-bottom: 5px;
-            }
-
-            .hill-progress-fill {
-                height: 100%;
-                width: 0%;
-                background: linear-gradient(90deg, #ffd700, #ffaa00);
-                border-radius: 4px;
-                transition: width 0.1s ease;
-            }
-
-            .hill-time {
-                text-align: center;
-                font-size: 12px;
-                opacity: 0.8;
-            }
-
-            .hill-ring {
-                animation: hillRingPulse 2s infinite;
-            }
-
-            @keyframes hillRingPulse {
-                0% { stroke-opacity: 0.8; }
-                50% { stroke-opacity: 0.4; }
-                100% { stroke-opacity: 0.8; }
-            }
-        `;
-        document.head.appendChild(style);
+        this.progressElement = hillUI;
     },
 
     // Update hill control status
     update() {
-        if (!this.hillPlanet || !GameModes.hasFeature('kingOfHill')) return;
+        if (!this.hillPlanet) return;
 
-        const currentOwner = this.hillPlanet.owner;
+        const previousController = this.currentController;
+        this.currentController = this.hillPlanet.owner;
 
-        // Check if control changed
-        if (currentOwner !== this.currentController) {
-            this.currentController = currentOwner;
-            this.controlStartTime = Date.now();
-            
-            // Update UI
-            this.updateHillUI();
-            
-            // Show/hide progress circle
-            if (currentOwner !== 'neutral') {
-                this.progressElement.style.display = 'block';
-                this.progressElement.setAttribute('stroke', 
-                    currentOwner === 'player' ? '#00ff88' : '#ff4444');
-            } else {
-                this.progressElement.style.display = 'none';
-            }
-
-            console.log(`👑 Hill control changed to: ${currentOwner}`);
+        // Check for controller change
+        if (previousController !== this.currentController) {
+            this.onControllerChange();
         }
 
         // Update progress if someone controls the hill
-        if (this.currentController !== 'neutral' && this.currentController !== null) {
-            const elapsed = Date.now() - this.controlStartTime;
-            const progress = Math.min(1, elapsed / this.controlDuration);
-            
-            // Update progress circle
-            const circumference = 2 * Math.PI * (this.hillPlanet.radius + 12);
-            const dashArray = `${circumference * progress},${circumference}`;
-            this.progressElement.setAttribute('stroke-dasharray', dashArray);
+        if (this.currentController && this.currentController !== 'neutral') {
+            this.updateProgress();
+        }
 
-            // Update UI progress bar
-            const progressFill = document.getElementById('hillProgressFill');
-            if (progressFill) {
-                progressFill.style.width = `${progress * 100}%`;
-            }
+        // Check for victory
+        this.checkVictory();
+    },
 
-            // Update time remaining
-            const timeRemaining = Math.ceil((this.controlDuration - elapsed) / 1000);
-            const timeElement = document.getElementById('hillTimeRemaining');
-            if (timeElement) {
-                timeElement.textContent = `${timeRemaining}s para ganar`;
-            }
-
-            // Check for victory
-            if (elapsed >= this.controlDuration) {
-                this.declareWinner();
-            }
+    // Handle controller change
+    onControllerChange() {
+        if (this.currentController === 'neutral') {
+            // Hill is neutral
+            this.controlStartTime = null;
+            this.hideProgress();
+            console.log('👑 Hill is now neutral');
         } else {
-            // Reset progress when no one controls
-            this.progressElement.setAttribute('stroke-dasharray', '0,1000');
-            const progressFill = document.getElementById('hillProgressFill');
-            if (progressFill) {
-                progressFill.style.width = '0%';
+            // Someone took control
+            this.controlStartTime = Date.now();
+            this.showProgress();
+            console.log(`👑 ${this.currentController} took control of the hill`);
+        }
+    },
+
+    // Show progress UI
+    showProgress() {
+        if (this.progressElement) {
+            this.progressElement.classList.remove('hidden');
+        }
+    },
+
+    // Hide progress UI
+    hideProgress() {
+        if (this.progressElement) {
+            this.progressElement.classList.add('hidden');
+        }
+    },
+
+    // Update progress display
+    updateProgress() {
+        if (!this.controlStartTime || !this.progressElement) return;
+
+        const elapsed = Date.now() - this.controlStartTime;
+        const progress = Math.min(elapsed / this.controlDuration, 1) * 100;
+
+        // Update text
+        const remaining = Math.ceil((this.controlDuration - elapsed) / 1000);
+        const controllerText = document.getElementById('hillControllerText');
+        if (controllerText) {
+            const controllerName = this.currentController === 'player' ? 'Jugador' : 'IA';
+            controllerText.textContent = `${controllerName} controla la colina - ${remaining}s`;
+        }
+
+        // Update progress bar
+        const progressBar = document.getElementById('hillControlFill');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.className = `hill-control-fill ${this.currentController}`;
+        }
+    },
+
+    // Check for victory condition
+    checkVictory() {
+        if (!this.controlStartTime || !this.currentController || this.currentController === 'neutral') {
+            return false;
+        }
+
+        const elapsed = Date.now() - this.controlStartTime;
+        if (elapsed >= this.controlDuration) {
+            // Victory!
+            console.log(`👑 ${this.currentController} wins by King of Hill!`);
+            
+            // Trigger victory
+            if (GameEngine && GameEngine.endGame) {
+                GameEngine.endGame(this.currentController);
             }
+            
+            return true;
         }
+
+        return false;
     },
 
-    // Update hill UI display
-    updateHillUI() {
-        const controllerElement = document.getElementById('hillController');
-        if (!controllerElement) return;
-
-        controllerElement.className = 'hill-controller';
-
-        switch (this.currentController) {
-            case 'player':
-                controllerElement.textContent = 'JUGADOR controla la colina';
-                controllerElement.classList.add('player-control');
-                break;
-            case 'ai':
-                controllerElement.textContent = 'IA controla la colina';
-                controllerElement.classList.add('ai-control');
-                break;
-            default:
-                controllerElement.textContent = 'Nadie controla la colina';
-                break;
-        }
-    },
-
-    // Declare winner of King of Hill
-    declareWinner() {
-        const winner = this.currentController;
-        console.log(`👑 King of Hill winner: ${winner}`);
-
-        // Trigger game end
-        if (GameEngine && GameEngine.endGame) {
-            GameEngine.endGame(winner, 'King of Hill Victory!');
-        }
-    },
-
-    // Get current hill controller
+    // Get current controller
     getCurrentController() {
         return this.currentController;
     },
 
-    // Get hill planet
-    getHillPlanet() {
-        return this.hillPlanet;
-    },
-
     // Get control progress (0-1)
     getControlProgress() {
-        if (!this.controlStartTime || this.currentController === 'neutral') return 0;
+        if (!this.controlStartTime) return 0;
         
         const elapsed = Date.now() - this.controlStartTime;
-        return Math.min(1, elapsed / this.controlDuration);
+        return Math.min(elapsed / this.controlDuration, 1);
     },
 
     // Reset hill state
     reset() {
         this.currentController = null;
         this.controlStartTime = null;
+        this.hideProgress();
+        
+        // Reset hill planet if it exists
+        if (this.hillPlanet) {
+            this.hillPlanet.isHill = true;
+        }
+        
+        console.log('👑 King of Hill reset');
+    },
+
+    // Cleanup
+    destroy() {
+        this.reset();
+        
+        // Remove visual elements
+        const hillElements = document.querySelectorAll('.hill-ring, .hill-crown');
+        hillElements.forEach(el => el.remove());
         
         if (this.progressElement) {
-            this.progressElement.style.display = 'none';
-            this.progressElement.setAttribute('stroke-dasharray', '0,1000');
+            this.progressElement.remove();
         }
-
-        this.updateHillUI();
-        console.log('👑 King of Hill reset');
+        
+        console.log('👑 King of Hill destroyed');
     }
 };
 
