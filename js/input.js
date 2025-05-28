@@ -1,4 +1,4 @@
-// Input Manager - Fixed hover conflicts and canvas positioning
+// Input Manager - Fixed hover with pointer-events and positioning
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -9,7 +9,7 @@ const InputManager = {
         selectedPlanet: null,
         lastKeyTime: 0
     },
-    hoverTimeout: null,
+    lastHoveredPlanet: null,
 
     init() {
         this.setupMouseEvents();
@@ -20,15 +20,10 @@ const InputManager = {
     setupMouseEvents() {
         const canvas = document.getElementById('gameCanvas');
         
-        // Mouse events for drag & drop
         canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e), false);
         canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e), false);
         canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e), false);
         canvas.addEventListener('mouseleave', () => this.handleMouseLeave(), false);
-        
-        // Separate hover handling with debounce to prevent conflicts
-        canvas.addEventListener('mouseenter', () => this.clearHoverEffects());
-        canvas.addEventListener('mouseleave', () => this.clearHoverEffects());
     },
 
     setupKeyboardEvents() {
@@ -37,7 +32,7 @@ const InputManager = {
 
     handleMouseDown(e) {
         e.preventDefault();
-        this.clearHoverEffects(); // Clear hover when starting drag
+        UI.hideTooltip(); // Hide tooltip immediately on click
         
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
@@ -51,7 +46,6 @@ const InputManager = {
         if (this.dragState.isDragging) {
             this.updateDrag(e);
         } else {
-            // Only handle hover when not dragging
             this.handleHover(e);
         }
     },
@@ -70,58 +64,50 @@ const InputManager = {
     },
 
     handleHover(e) {
-        // Clear existing timeout
-        if (this.hoverTimeout) {
-            clearTimeout(this.hoverTimeout);
-        }
-
-        // Debounce hover to prevent conflicts
-        this.hoverTimeout = setTimeout(() => {
-            const pos = this.getCanvasPosition(e);
-            const planet = GameEngine.getPlanetAt(pos.x, pos.y);
+        const pos = this.getCanvasPosition(e);
+        const planet = GameEngine.getPlanetAt(pos.x, pos.y);
+        
+        // Only update if planet changed
+        if (planet !== this.lastHoveredPlanet) {
+            // Clear previous hover
+            if (this.lastHoveredPlanet) {
+                this.lastHoveredPlanet.setHovered(false);
+            }
             
-            // Clear all hover effects first
-            GameEngine.planets.forEach(p => p.setHovered(false));
+            this.lastHoveredPlanet = planet;
             
             if (planet) {
                 planet.setHovered(true);
-                this.showPlanetTooltip(planet, e.clientX, e.clientY);
+                // Position tooltip away from planet to avoid conflicts
+                this.showPlanetTooltip(planet, e.clientX + 20, e.clientY - 10);
             } else {
-                this.hideTooltip();
+                UI.hideTooltip();
             }
-        }, 50); // 50ms debounce
+        }
     },
 
     clearHoverEffects() {
-        if (this.hoverTimeout) {
-            clearTimeout(this.hoverTimeout);
-            this.hoverTimeout = null;
+        if (this.lastHoveredPlanet) {
+            this.lastHoveredPlanet.setHovered(false);
+            this.lastHoveredPlanet = null;
         }
-        
-        GameEngine.planets.forEach(p => p.setHovered(false));
-        this.hideTooltip();
+        UI.hideTooltip();
     },
 
     getCanvasPosition(e) {
         const canvas = document.getElementById('gameCanvas');
         const rect = canvas.getBoundingClientRect();
         
-        // Use actual window dimensions for scaling
-        const scaleX = CONFIG.GAME.CANVAS_WIDTH / rect.width;
-        const scaleY = CONFIG.GAME.CANVAS_HEIGHT / rect.height;
-        
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
+            x: (e.clientX - rect.left) * (CONFIG.GAME.CANVAS_WIDTH / rect.width),
+            y: (e.clientY - rect.top) * (CONFIG.GAME.CANVAS_HEIGHT / rect.height)
         };
     },
 
     startDrag(planet, pos) {
-        console.log(`Starting drag from planet ${planet.id}`);
         this.dragState.isDragging = true;
         this.dragState.startPlanet = planet;
         
-        // Create visual drag line
         const svg = document.getElementById('gameCanvas');
         this.dragState.dragLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         this.dragState.dragLine.setAttribute('x1', planet.x);
@@ -130,9 +116,9 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('y2', planet.y);
         this.dragState.dragLine.setAttribute('stroke', CONFIG.COLORS.PLAYER);
         this.dragState.dragLine.setAttribute('stroke-width', '3');
-        this.dragState.dragLine.setAttribute('stroke-dasharray', '5,5');
+        this.dragState.dragLine.setAttribute('stroke-dasharray', '8,4');
         this.dragState.dragLine.setAttribute('opacity', '0.8');
-        this.dragState.dragLine.classList.add('drag-line');
+        this.dragState.dragLine.style.pointerEvents = 'none'; // Prevent interference
         svg.appendChild(this.dragState.dragLine);
     },
 
@@ -180,12 +166,9 @@ const InputManager = {
         
         if (!planet) return;
         
-        const now = Date.now();
-        
         if (!this.keyboardState.selectedPlanet) {
             if (planet.owner === 'player' && planet.ships > 0) {
                 this.keyboardState.selectedPlanet = planet;
-                this.keyboardState.lastKeyTime = now;
                 this.showPlanetSelection(planet);
                 
                 setTimeout(() => {
@@ -250,6 +233,7 @@ const InputManager = {
         line.setAttribute('stroke', CONFIG.COLORS.PLAYER);
         line.setAttribute('stroke-width', '4');
         line.setAttribute('opacity', '0.8');
+        line.style.pointerEvents = 'none';
         svg.appendChild(line);
         
         let opacity = 0.8;
@@ -264,7 +248,7 @@ const InputManager = {
         }, 50);
         
         document.getElementById('gameStatus').textContent = 
-            `${ships} naves enviadas de ${origin.assignedKey} a ${destination.assignedKey}`;
+            `${ships} naves de ${origin.assignedKey} → ${destination.assignedKey}`;
         
         setTimeout(() => {
             document.getElementById('gameStatus').textContent = 'Arrastra para conquistar';
@@ -280,9 +264,5 @@ const InputManager = {
         `;
         
         UI.showTooltip(info, x, y);
-    },
-
-    hideTooltip() {
-        UI.hideTooltip();
     }
 };
