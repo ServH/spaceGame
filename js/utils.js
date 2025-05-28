@@ -1,89 +1,52 @@
-// Utility functions - Reusable helpers
+// Utils - Essential utility functions
 const Utils = {
     // Distance between two points
-    distance(p1, p2) {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
+    distance(a, b) {
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
         return Math.sqrt(dx * dx + dy * dy);
     },
 
+    // Linear interpolation
+    lerp(start, end, t) {
+        return start + (end - start) * t;
+    },
+
     // Random number between min and max
-    random(min, max) {
+    randomBetween(min, max) {
         return Math.random() * (max - min) + min;
     },
 
-    // Random integer between min and max (inclusive)
+    // Random integer between min and max
     randomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
+    // Shuffle array
+    shuffle(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    },
+
+    // Format number for display
+    formatNumber(num) {
+        if (num >= 1000) {
+            return Math.floor(num / 100) / 10 + 'k';
+        }
+        return Math.floor(num);
+    },
+
+    // Check if point is inside circle
+    pointInCircle(point, circle, radius) {
+        return this.distance(point, circle) <= radius;
     },
 
     // Clamp value between min and max
     clamp(value, min, max) {
         return Math.min(Math.max(value, min), max);
-    },
-
-    // Lerp between two values
-    lerp(a, b, t) {
-        return a + (b - a) * t;
-    },
-
-    // Normalize angle to 0-2π
-    normalizeAngle(angle) {
-        while (angle < 0) angle += Math.PI * 2;
-        while (angle > Math.PI * 2) angle -= Math.PI * 2;
-        return angle;
-    },
-
-    // Get angle between two points
-    angleBetween(p1, p2) {
-        return Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    },
-
-    // Check if point is inside circle
-    pointInCircle(point, circle) {
-        return this.distance(point, circle) <= circle.radius;
-    },
-
-    // Get mouse position relative to element
-    getMousePos(event, element) {
-        const rect = element.getBoundingClientRect();
-        return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
-        };
-    },
-
-    // Shuffle array in place
-    shuffle(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    },
-
-    // Check if planets have enough distance between them
-    checkPlanetPlacement(newPlanet, existingPlanets, minDistance) {
-        return existingPlanets.every(planet => 
-            this.distance(newPlanet, planet) >= minDistance
-        );
-    },
-
-    // Format number for display
-    formatNumber(num) {
-        return Math.floor(num);
-    },
-
-    // Debounce function
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
     }
 };
