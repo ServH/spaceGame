@@ -56,14 +56,21 @@ const GameMenu = {
                     border: 2px solid #00ff88;
                     border-radius: 10px;
                     padding: 40px;
-                    max-width: 600px;
+                    width: 600px;
+                    height: 500px;
                     text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    box-sizing: border-box;
                 ">
-                    <h1 style="color: #00ff88; margin-bottom: 30px;">SPACE CONQUEST</h1>
-                    <p style="margin-bottom: 30px; color: #ccc;">Selecciona modo de juego:</p>
-                    
-                    <div id="mode-buttons" style="margin-bottom: 30px;">
-                        ${Object.keys(this.modes).map(key => this.createModeButton(key)).join('')}
+                    <div>
+                        <h1 style="color: #00ff88; margin: 0 0 30px 0;">SPACE CONQUEST</h1>
+                        <p style="margin: 0 0 30px 0; color: #ccc;">Selecciona modo de juego:</p>
+                        
+                        <div id="mode-buttons" style="margin-bottom: 30px;">
+                            ${Object.keys(this.modes).map(key => this.createModeButton(key)).join('')}
+                        </div>
                     </div>
                     
                     <div id="mode-info" style="
@@ -71,8 +78,10 @@ const GameMenu = {
                         border: 1px solid #00ff88;
                         border-radius: 5px;
                         padding: 20px;
-                        margin-bottom: 30px;
                         text-align: left;
+                        flex-grow: 1;
+                        margin-bottom: 30px;
+                        overflow-y: auto;
                     ">
                         ${this.getModeInfo(this.selectedMode)}
                     </div>
@@ -164,6 +173,12 @@ const GameMenu = {
     startGame() {
         console.log(`🎮 Starting ${this.selectedMode} mode`);
         this.hide();
-        GameEngine.init(this.selectedMode);
+        
+        // Initialize game engine with selected mode
+        if (window.GameEngine && GameEngine.init) {
+            GameEngine.init(this.selectedMode);
+        } else {
+            console.error('GameEngine not available');
+        }
     }
 };
