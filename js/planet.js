@@ -65,7 +65,7 @@ class Planet {
 
     assignKey(key) {
         this.assignedKey = key;
-        this.keyElement.textContent = key;
+        this.keyElement.textContent = key.toUpperCase();
         CONFIG.KEYBOARD.assignments[key] = this.id;
     }
 
@@ -107,8 +107,7 @@ class Planet {
                 this.lastProduction = now;
                 this.updateVisual();
                 
-                // V1.2: Production pulse animation
-                Animations.createProductionPulse(this);
+                if (window.Animations) Animations.createProductionPulse(this);
             }
         }
         
@@ -129,8 +128,7 @@ class Planet {
             this.conquestTimer = CONFIG.PLANETS.CONQUEST_TIME;
             this.updateVisual();
             
-            // V1.2: Add conquest animation
-            Animations.createConquestProgress(this);
+            if (window.Animations) Animations.createConquestProgress(this);
         }
     }
 
@@ -142,10 +140,8 @@ class Planet {
         this.lastProduction = Date.now();
         this.updateVisual();
         
-        // V1.2: Remove conquest animation
-        Animations.removeAnimation(`conquest_${this.id}`);
-        
-        UI.updateStats();
+        if (window.Animations) Animations.removeAnimation(`conquest_${this.id}`);
+        if (window.UI) UI.updateStats();
     }
 
     attack(attackerShips, attacker) {
@@ -153,14 +149,13 @@ class Planet {
             this.isBeingConquered = false;
             this.conqueror = null;
             this.conquestTimer = 0;
-            Animations.removeAnimation(`conquest_${this.id}`);
+            if (window.Animations) Animations.removeAnimation(`conquest_${this.id}`);
         }
         
         if (this.owner === attacker) {
             this.ships = Math.min(this.capacity, this.ships + attackerShips);
         } else {
-            // V1.2: Add battle animation
-            Animations.createBattleEffect(this);
+            if (window.Animations) Animations.createBattleEffect(this);
             
             if (attackerShips > this.ships) {
                 this.owner = attacker;
@@ -172,7 +167,7 @@ class Planet {
         }
         
         this.updateVisual();
-        UI.updateStats();
+        if (window.UI) UI.updateStats();
     }
 
     canSendShips(amount) {
@@ -205,6 +200,6 @@ class Planet {
         if (this.element) this.element.remove();
         if (this.textElement) this.textElement.remove();
         if (this.keyElement) this.keyElement.remove();
-        Animations.removeAnimation(`conquest_${this.id}`);
+        if (window.Animations) Animations.removeAnimation(`conquest_${this.id}`);
     }
 }
