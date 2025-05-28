@@ -1,62 +1,68 @@
 // Victory Conditions System - V1.3
-// Multiple ways to win based on game mode
+// Multiple victory conditions for different game modes
 
 const VictoryConditions = {
-    // Victory types
-    types: {
+    // Available victory conditions
+    conditions: {
         TOTAL_CONQUEST: {
             id: 'total_conquest',
             name: 'Conquista Total',
             description: 'Controla todos los planetas',
-            checkFunction: 'checkTotalConquest'
+            check: () => VictoryConditions.checkTotalConquest()
         },
+        
         ECONOMIC: {
             id: 'economic',
             name: 'Victoria Económica',
             description: 'Ratio 3:1 de naves + mayoría de planetas',
-            checkFunction: 'checkEconomicVictory'
+            check: () => VictoryConditions.checkEconomic()
         },
+        
         DOMINATION: {
             id: 'domination',
             name: 'Dominación',
-            description: 'Controla 75% de los planetas',
-            checkFunction: 'checkDomination'
+            description: 'Control del 75% de planetas',
+            check: () => VictoryConditions.checkDomination()
         },
+        
         TIME: {
             id: 'time',
             name: 'Victoria por Tiempo',
             description: 'Mayoría de planetas al final del tiempo',
-            checkFunction: 'checkTimeVictory'
+            check: () => VictoryConditions.checkTimeVictory()
         },
+        
         KING_OF_HILL: {
             id: 'king_of_hill',
             name: 'Rey de la Colina',
-            description: 'Controla la colina por 30 segundos',
-            checkFunction: 'checkKingOfHill'
+            description: 'Controlar la colina por 30 segundos',
+            check: () => VictoryConditions.checkKingOfHill()
         }
     },
 
-    // Last check time to avoid spam
-    lastCheckTime: 0,
-    checkInterval: 1000, // Check every second
+    // Last check results to prevent spam
+    lastCheckResults: {},
 
-    // Check all victory conditions
+    // Initialize victory system
+    init() {
+        console.log('🏆 Victory Conditions system initialized');
+    },
+
+    // Check all active victory conditions
     checkVictoryConditions() {
-        const now = Date.now();
-        if (now - this.lastCheckTime < this.checkInterval) return null;
-        this.lastCheckTime = now;
-
         const activeConditions = GameModes.getVictoryConditions();
         
         for (const conditionId of activeConditions) {
-            const condition = Object.values(this.types).find(t => t.id === conditionId);
-            if (condition && this[condition.checkFunction]) {
-                const result = this[condition.checkFunction]();
-                if (result.victory) {
+            const condition = this.conditions[conditionId.toUpperCase()];
+            if (condition) {
+                const result = condition.check();
+                if (result && result.winner) {
+                    // Victory detected!
+                    console.log(`🏆 Victory by ${condition.name}: ${result.winner} wins!`);
                     return {
                         winner: result.winner,
                         condition: condition.name,
-                        description: result.description || condition.description
+                        details: result.details
                     };
                 }
             }
@@ -70,189 +76,211 @@ const VictoryConditions = {
         const planets = GameEngine.planets;
         const playerPlanets = planets.filter(p => p.owner === 'player');
         const aiPlanets = planets.filter(p => p.owner === 'ai');
-        
+
         if (playerPlanets.length === planets.length) {
-            return {
-                victory: true,
+            return { 
                 winner: 'player',
-                description: '¡Has conquistado todos los planetas!'
-            };
-        }
-        
-        if (aiPlanets.length === planets.length) {
-            return {
-                victory: true,
-                winner: 'ai',
-                description: 'La IA ha conquistado todos los planetas'
+                details: 'Conquered all planets'
             };
         }
 
-        return { victory: false };
+        if (aiPlanets.length === planets.length) {
+            return { 
+                winner: 'ai',
+                details: 'AI conquered all planets'
+            };
+        }
+
+        return null;
     },
 
     // Check economic victory (3:1 ship ratio + planet majority)
-    checkEconomicVictory() {
+    checkEconomic() {
         const planets = GameEngine.planets;
         const playerPlanets = planets.filter(p => p.owner === 'player');
         const aiPlanets = planets.filter(p => p.owner === 'ai');
         
         // Calculate total ships
-        const playerShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
-        const aiShips = aiPlanets.reduce((sum, p) => sum + p.ships, 0);
-        
-        // Check 3:1 ratio and planet majority
-        if (playerShips >= aiShips * 3 && playerPlanets.length > aiPlanets.length) {
-            return {
-                victory: true,
+        const playerShips = playerPlanets.reduce((total, p) => total + p.ships, 0);
+        const aiShips = aiPlanets.reduce((total, p) => total + p.ships, 0);
+
+        // Check player economic victory
+        if (playerPlanets.length > aiPlanets.length && 
+            playerShips >= aiShips * 3) {
+            return { 
                 winner: 'player',
-                description: `¡Victoria económica! ${playerShips} vs ${aiShips} naves`
-            };
-        }
-        
-        if (aiShips >= playerShips * 3 && aiPlanets.length > playerPlanets.length) {
-            return {
-                victory: true,
-                winner: 'ai',
-                description: `Victoria económica de la IA: ${aiShips} vs ${playerShips} naves`
+                details: `Economic superiority: ${playerShips} vs ${aiShips} ships, ${playerPlanets.length} vs ${aiPlanets.length} planets`
             };
         }
 
-        return { victory: false };
+        // Check AI economic victory
+        if (aiPlanets.length > playerPlanets.length && 
+            aiShips >= playerShips * 3) {
+            return { 
+                winner: 'ai',
+                details: `AI economic superiority: ${aiShips} vs ${playerShips} ships, ${aiPlanets.length} vs ${playerPlanets.length} planets`
+            };
+        }
+
+        return null;
     },
 
     // Check domination victory (75% of planets)
     checkDomination() {
         const planets = GameEngine.planets;
-        const threshold = Math.ceil(planets.length * 0.75);
+        const totalPlanets = planets.length;
+        const threshold = Math.ceil(totalPlanets * 0.75);
         
-        const playerPlanets = planets.filter(p => p.owner === 'player');
-        const aiPlanets = planets.filter(p => p.owner === 'ai');
-        
-        if (playerPlanets.length >= threshold) {
-            return {
-                victory: true,
+        const playerPlanets = planets.filter(p => p.owner === 'player').length;
+        const aiPlanets = planets.filter(p => p.owner === 'ai').length;
+
+        if (playerPlanets >= threshold) {
+            return { 
                 winner: 'player',
-                description: `¡Dominación! Controlas ${playerPlanets.length}/${planets.length} planetas`
+                details: `Domination: ${playerPlanets}/${totalPlanets} planets (${Math.round(playerPlanets/totalPlanets*100)}%)`
             };
         }
-        
-        if (aiPlanets.length >= threshold) {
-            return {
-                victory: true,
+
+        if (aiPlanets >= threshold) {
+            return { 
                 winner: 'ai',
-                description: `La IA domina con ${aiPlanets.length}/${planets.length} planetas`
+                details: `AI domination: ${aiPlanets}/${totalPlanets} planets (${Math.round(aiPlanets/totalPlanets*100)}%)`
             };
         }
 
-        return { victory: false };
+        return null;
     },
 
-    // Check time victory (triggered when time runs out)
+    // Check time victory (for timed modes)
     checkTimeVictory() {
-        // This is called when timer expires
-        if (!GameTimer.isActive()) {
-            const planets = GameEngine.planets;
-            const playerPlanets = planets.filter(p => p.owner === 'player');
-            const aiPlanets = planets.filter(p => p.owner === 'ai');
-            
-            if (playerPlanets.length > aiPlanets.length) {
-                return {
-                    victory: true,
-                    winner: 'player',
-                    description: `¡Victoria por tiempo! ${playerPlanets.length} vs ${aiPlanets.length} planetas`
-                };
-            } else if (aiPlanets.length > playerPlanets.length) {
-                return {
-                    victory: true,
-                    winner: 'ai',
-                    description: `Victoria por tiempo de la IA: ${aiPlanets.length} vs ${playerPlanets.length} planetas`
-                };
-            } else {
-                // Tie - check ships
-                const playerShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
-                const aiShips = aiPlanets.reduce((sum, p) => sum + p.ships, 0);
-                
-                return {
-                    victory: true,
-                    winner: playerShips >= aiShips ? 'player' : 'ai',
-                    description: `Empate resuelto por naves: ${playerShips} vs ${aiShips}`
-                };
-            }
+        // Only check if timer exists and time is up
+        if (!GameTimer || !GameTimer.isActive()) {
+            return null;
         }
 
-        return { victory: false };
+        const timeRemaining = GameTimer.getTimeRemaining();
+        if (timeRemaining > 0) {
+            return null; // Time not up yet
+        }
+
+        // Time is up - check who has more planets
+        const planets = GameEngine.planets;
+        const playerPlanets = planets.filter(p => p.owner === 'player').length;
+        const aiPlanets = planets.filter(p => p.owner === 'ai').length;
+
+        if (playerPlanets > aiPlanets) {
+            return { 
+                winner: 'player',
+                details: `Time victory: ${playerPlanets} vs ${aiPlanets} planets`
+            };
+        } else if (aiPlanets > playerPlanets) {
+            return { 
+                winner: 'ai',
+                details: `AI time victory: ${aiPlanets} vs ${playerPlanets} planets`
+            };
+        } else {
+            return { 
+                winner: 'tie',
+                details: `Draw: ${playerPlanets} vs ${aiPlanets} planets`
+            };
+        }
     },
 
-    // Check King of Hill victory (handled by KingOfHill system)
+    // Check King of Hill victory
     checkKingOfHill() {
-        // This condition is handled by the KingOfHill system
-        // We return false here as KingOfHill calls GameEngine.endGame directly
-        return { victory: false };
+        if (!KingOfHill) return null;
+        
+        // KingOfHill handles its own victory detection
+        // This is called from KingOfHill.checkVictory()
+        return null;
     },
 
     // Get victory progress for UI display
     getVictoryProgress() {
+        const activeConditions = GameModes.getVictoryConditions();
+        const progress = {};
+
+        for (const conditionId of activeConditions) {
+            const condition = this.conditions[conditionId.toUpperCase()];
+            if (condition) {
+                progress[conditionId] = this.getConditionProgress(conditionId);
+            }
+        }
+
+        return progress;
+    },
+
+    // Get progress for a specific condition
+    getConditionProgress(conditionId) {
         const planets = GameEngine.planets;
         const playerPlanets = planets.filter(p => p.owner === 'player');
         const aiPlanets = planets.filter(p => p.owner === 'ai');
         
-        return {
-            totalConquest: {
-                player: (playerPlanets.length / planets.length) * 100,
-                ai: (aiPlanets.length / planets.length) * 100
-            },
-            domination: {
-                player: Math.min(100, (playerPlanets.length / (planets.length * 0.75)) * 100),
-                ai: Math.min(100, (aiPlanets.length / (planets.length * 0.75)) * 100)
-            },
-            economic: this.getEconomicProgress(),
-            kingOfHill: KingOfHill ? KingOfHill.getControlProgress() * 100 : 0
-        };
-    },
+        switch (conditionId.toLowerCase()) {
+            case 'total_conquest':
+                return {
+                    player: (playerPlanets.length / planets.length) * 100,
+                    ai: (aiPlanets.length / planets.length) * 100
+                };
 
-    // Get economic victory progress
-    getEconomicProgress() {
-        const planets = GameEngine.planets;
-        const playerPlanets = planets.filter(p => p.owner === 'player');
-        const aiPlanets = planets.filter(p => p.owner === 'ai');
-        
-        const playerShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
-        const aiShips = aiPlanets.reduce((sum, p) => sum + p.ships, 0);
-        
-        // Calculate progress towards 3:1 ratio + planet majority
-        const playerRatioProgress = aiShips > 0 ? Math.min(100, (playerShips / (aiShips * 3)) * 100) : 100;
-        const playerPlanetProgress = aiPlanets.length > 0 ? 
-            Math.min(100, (playerPlanets.length / (aiPlanets.length + 1)) * 100) : 100;
-        
-        const aiRatioProgress = playerShips > 0 ? Math.min(100, (aiShips / (playerShips * 3)) * 100) : 100;
-        const aiPlanetProgress = playerPlanets.length > 0 ? 
-            Math.min(100, (aiPlanets.length / (playerPlanets.length + 1)) * 100) : 100;
-        
-        return {
-            player: (playerRatioProgress + playerPlanetProgress) / 2,
-            ai: (aiRatioProgress + aiPlanetProgress) / 2
-        };
-    },
+            case 'domination':
+                const threshold = Math.ceil(planets.length * 0.75);
+                return {
+                    player: (playerPlanets.length / threshold) * 100,
+                    ai: (aiPlanets.length / threshold) * 100,
+                    threshold: threshold
+                };
 
-    // Handle time up event
-    handleTimeUp() {
-        const result = this.checkTimeVictory();
-        if (result.victory && GameEngine.endGame) {
-            GameEngine.endGame(result.winner, result.description);
+            case 'economic':
+                const playerShips = playerPlanets.reduce((total, p) => total + p.ships, 0);
+                const aiShips = aiPlanets.reduce((total, p) => total + p.ships, 0);
+                return {
+                    player: { ships: playerShips, planets: playerPlanets.length },
+                    ai: { ships: aiShips, planets: aiPlanets.length },
+                    shipRatio: playerShips > 0 ? aiShips / playerShips : 0
+                };
+
+            case 'time':
+                if (GameTimer && GameTimer.isActive()) {
+                    return {
+                        timeRemaining: GameTimer.getTimeRemaining(),
+                        player: playerPlanets.length,
+                        ai: aiPlanets.length
+                    };
+                }
+                return null;
+
+            case 'king_of_hill':
+                if (KingOfHill) {
+                    return {
+                        controller: KingOfHill.getCurrentController(),
+                        progress: KingOfHill.getControlProgress() * 100
+                    };
+                }
+                return null;
+
+            default:
+                return null;
         }
     },
 
-    // Get active victory conditions for display
-    getActiveConditions() {
-        const activeIds = GameModes.getVictoryConditions();
-        return activeIds.map(id => 
-            Object.values(this.types).find(t => t.id === id)
-        ).filter(Boolean);
-    },
+    // Get formatted victory status for UI
+    getVictoryStatus() {
+        const progress = this.getVictoryProgress();
+        const status = [];
 
-    // Check if specific victory condition is active
-    isConditionActive(conditionId) {
-        return GameModes.getVictoryConditions().includes(conditionId);
+        for (const [conditionId, data] of Object.entries(progress)) {
+            const condition = this.conditions[conditionId.toUpperCase()];
+            if (condition && data) {
+                status.push({
+                    name: condition.name,
+                    description: condition.description,
+                    progress: data
+                });
+            }
+        }
+
+        return status;
     }
 };
 
