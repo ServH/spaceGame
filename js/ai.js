@@ -1,9 +1,13 @@
-// AI Module - Simple but effective AI opponent
+// AI Controller - Fixed and functional AI based on SpaceIndustry
 const AI = {
     lastDecision: 0,
+    strategy: 'balanced',
+    difficulty: 'normal',
     
     init() {
         this.lastDecision = Date.now();
+        this.strategy = 'balanced';
+        console.log('🤖 AI initialized');
     },
 
     update() {
@@ -16,198 +20,163 @@ const AI = {
     },
 
     makeDecision() {
-        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai' && p.ships > CONFIG.AI.MIN_ATTACK_FORCE);
+        console.log('🤖 AI making decision...');
         
-        if (aiPlanets.length === 0) return;
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai' && p.ships > 1);
         
-        // Choose strategy based on situation
-        const strategy = this.chooseStrategy();
-        
-        switch (strategy) {
-            case 'expand':
-                this.expandToNeutral(aiPlanets);
-                break;
-            case 'attack':
-                this.attackPlayer(aiPlanets);
-                break;
-            case 'reinforce':
-                this.reinforceWeakPlanets(aiPlanets);
-                break;
+        if (aiPlanets.length === 0) {
+            console.log('🤖 AI has no planets with ships');
+            return;
         }
-    },
 
-    chooseStrategy() {
-        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai').length;
-        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player').length;
-        const neutralPlanets = GameEngine.planets.filter(p => p.owner === 'neutral').length;
+        // Analyze game state
+        const gameState = this.analyzeGameState();
         
-        // Prioritize expansion if there are neutral planets
-        if (neutralPlanets > 0 && Math.random() < 0.6) {
-            return 'expand';
-        }
+        // Update strategy
+        this.updateStrategy(gameState);
         
-        // Attack if AI has advantage
-        if (aiPlanets > playerPlanets && Math.random() < CONFIG.AI.AGGRESSION) {
-            return 'attack';
-        }
+        // Find best action
+        const action = this.selectBestAction(gameState);
         
-        // Otherwise expand or reinforce
-        return neutralPlanets > 0 ? 'expand' : 'reinforce';
-    },
-
-    expandToNeutral(aiPlanets) {
-        const neutralPlanets = GameEngine.planets.filter(p => p.owner === 'neutral');
-        if (neutralPlanets.length === 0) return;
-        
-        // Find best expansion opportunity
-        let bestOption = null;
-        let bestScore = -1;
-        
-        aiPlanets.forEach(origin => {
-            neutralPlanets.forEach(target => {
-                const score = this.scoreExpansionTarget(origin, target);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestOption = { origin, target };
-                }
-            });
-        });
-        
-        if (bestOption) {
-            this.sendAIFleet(bestOption.origin, bestOption.target);
-        }
-    },
-
-    attackPlayer(aiPlanets) {
-        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');
-        if (playerPlanets.length === 0) return;
-        
-        // Find best attack opportunity
-        let bestOption = null;
-        let bestScore = -1;
-        
-        aiPlanets.forEach(origin => {
-            playerPlanets.forEach(target => {
-                const score = this.scoreAttackTarget(origin, target);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestOption = { origin, target };
-                }
-            });
-        });
-        
-        if (bestOption && bestScore > 0) {
-            this.sendAIFleet(bestOption.origin, bestOption.target);
-        }
-    },
-
-    reinforceWeakPlanets(aiPlanets) {
-        // Find weakest AI planet that can be reinforced
-        const weakPlanets = GameEngine.planets
-            .filter(p => p.owner === 'ai' && p.ships < p.capacity * 0.5)
-            .sort((a, b) => a.ships - b.ships);
-        
-        if (weakPlanets.length === 0) return;
-        
-        const target = weakPlanets[0];
-        const reinforcer = aiPlanets
-            .filter(p => p !== target && p.ships > p.capacity * 0.7)
-            .sort((a, b) => Utils.distance(a, target) - Utils.distance(b, target))[0];
-        
-        if (reinforcer) {
-            this.sendAIFleet(reinforcer, target);
-        }
-    },
-
-    scoreExpansionTarget(origin, target) {
-        const distance = Utils.distance(origin, target);
-        const capacity = target.capacity;
-        const shipsNeeded = Math.max(1, target.ships + 1);
-        
-        if (origin.ships < shipsNeeded) return -1;
-        
-        // Prefer closer, larger planets
-        return (capacity / distance) * 100;
-    },
-
-    scoreAttackTarget(origin, target) {
-        const distance = Utils.distance(origin, target);
-        const shipsNeeded = target.ships + 1;
-        const advantage = origin.ships - shipsNeeded;
-        
-        if (advantage <= 0) return -1;
-        
-        // Prefer attacks where AI has clear advantage
-        return (advantage / distance) * target.capacity;
-    },
-
-    sendAIFleet(origin, destination) {
-        if (!origin || !destination || origin === destination) return;
-        
-        // Calculate ships to send
-        let shipsToSend;
-        
-        if (destination.owner === 'neutral') {
-            // For neutral planets, send just enough to conquer
-            shipsToSend = Math.min(origin.ships, destination.ships + 1);
-        } else if (destination.owner === 'player') {
-            // For player planets, send more aggressive force
-            shipsToSend = Math.min(
-                origin.ships, 
-                Math.max(destination.ships + 2, Math.floor(origin.ships * 0.7))
-            );
+        if (action) {
+            this.executeAction(action);
+            console.log(`🤖 AI action: ${action.ships} ships from planet ${action.source.id} to ${action.target.id}`);
         } else {
-            // Reinforcement
-            const needed = destination.capacity - destination.ships;
-            shipsToSend = Math.min(origin.ships, needed);
-        }
-        
-        if (shipsToSend >= CONFIG.AI.MIN_ATTACK_FORCE) {
-            FleetManager.createFleet(origin, destination, shipsToSend, 'ai');
+            console.log('🤖 AI found no good actions');
         }
     },
 
-    // Advanced AI behaviors for future expansion
-    
-    evaluateStrategicValue(planet) {
-        // Higher capacity planets are more valuable
-        let value = planet.capacity;
+    analyzeGameState() {
+        const planets = GameEngine.planets;
+        const myPlanets = planets.filter(p => p.owner === 'ai');
+        const playerPlanets = planets.filter(p => p.owner === 'player');
+        const neutralPlanets = planets.filter(p => p.owner === 'neutral');
         
-        // Central planets are more valuable (closer to average position)
-        const center = this.getMapCenter();
-        const distanceFromCenter = Utils.distance(planet, center);
-        value += (200 - distanceFromCenter) / 10;
+        const myTotalShips = myPlanets.reduce((sum, p) => sum + p.ships, 0);
+        const playerTotalShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
         
-        // Planets near player are more strategically important
-        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');
-        if (playerPlanets.length > 0) {
-            const avgDistanceToPlayer = playerPlanets.reduce((sum, p) => 
-                sum + Utils.distance(planet, p), 0) / playerPlanets.length;
-            value += (300 - avgDistanceToPlayer) / 20;
-        }
-        
-        return value;
-    },
-
-    getMapCenter() {
-        const totalX = GameEngine.planets.reduce((sum, p) => sum + p.x, 0);
-        const totalY = GameEngine.planets.reduce((sum, p) => sum + p.y, 0);
         return {
-            x: totalX / GameEngine.planets.length,
-            y: totalY / GameEngine.planets.length
+            myPlanets,
+            playerPlanets,
+            neutralPlanets,
+            myTotalShips,
+            playerTotalShips,
+            shipRatio: myTotalShips / Math.max(playerTotalShips, 1),
+            gamePhase: neutralPlanets.length > 0 ? 'expansion' : 'endgame'
         };
     },
 
-    // Difficulty scaling
-    adjustDifficulty(playerAdvantage) {
-        if (playerAdvantage > 2) {
-            // Player is winning, make AI more aggressive
-            CONFIG.AI.AGGRESSION = Math.min(1, CONFIG.AI.AGGRESSION + 0.1);
-            CONFIG.AI.DECISION_INTERVAL = Math.max(1500, CONFIG.AI.DECISION_INTERVAL - 200);
-        } else if (playerAdvantage < -1) {
-            // AI is winning, reduce aggression slightly
-            CONFIG.AI.AGGRESSION = Math.max(0.3, CONFIG.AI.AGGRESSION - 0.05);
-            CONFIG.AI.DECISION_INTERVAL = Math.min(4000, CONFIG.AI.DECISION_INTERVAL + 100);
+    updateStrategy(gameState) {
+        if (gameState.shipRatio < 0.7) {
+            this.strategy = 'defensive';
+        } else if (gameState.gamePhase === 'expansion' && gameState.neutralPlanets.length > 0) {
+            this.strategy = 'expansion';
+        } else if (gameState.shipRatio > 1.3) {
+            this.strategy = 'aggressive';
+        } else {
+            this.strategy = 'balanced';
         }
+    },
+
+    selectBestAction(gameState) {
+        const actions = this.generatePossibleActions(gameState);
+        
+        if (actions.length === 0) return null;
+        
+        // Score actions
+        const scoredActions = actions.map(action => ({
+            ...action,
+            score: this.scoreAction(action, gameState)
+        }));
+        
+        // Sort by score
+        scoredActions.sort((a, b) => b.score - a.score);
+        
+        return scoredActions[0];
+    },
+
+    generatePossibleActions(gameState) {
+        const actions = [];
+        const targets = [...gameState.playerPlanets, ...gameState.neutralPlanets];
+        
+        gameState.myPlanets.forEach(source => {
+            if (source.ships <= 1) return; // Keep 1 ship for defense
+            
+            targets.forEach(target => {
+                const distance = Utils.distance(source, target);
+                const shipsToSend = this.calculateShipsToSend(source, target);
+                
+                if (shipsToSend > 0) {
+                    actions.push({
+                        type: 'attack',
+                        source,
+                        target,
+                        ships: shipsToSend,
+                        distance
+                    });
+                }
+            });
+        });
+        
+        return actions;
+    },
+
+    calculateShipsToSend(source, target) {
+        let needed;
+        
+        if (target.owner === 'neutral') {
+            needed = Math.max(1, target.ships + 1);
+        } else {
+            // Against player, send overwhelming force
+            needed = Math.max(target.ships + 2, Math.ceil(target.ships * 1.5));
+        }
+        
+        const available = source.ships - 1; // Keep 1 for defense
+        return Math.min(needed, available);
+    },
+
+    scoreAction(action, gameState) {
+        const { target, distance, ships } = action;
+        let score = 0;
+        
+        // Base value of target planet
+        score += target.capacity * 10;
+        
+        // Distance penalty
+        score -= distance * 0.1;
+        
+        // Strategy modifiers
+        switch (this.strategy) {
+            case 'expansion':
+                score += target.owner === 'neutral' ? 50 : 10;
+                break;
+            case 'aggressive':
+                score += target.owner === 'player' ? 50 : 20;
+                break;
+            case 'defensive':
+                score += target.owner === 'player' ? 30 : 40;
+                break;
+            default:
+                score += target.owner === 'neutral' ? 35 : 25;
+        }
+        
+        // Success probability
+        const successChance = target.owner === 'neutral' ? 0.9 : 
+                             ships > target.ships ? 0.8 : 0.4;
+        score *= successChance;
+        
+        return score;
+    },
+
+    executeAction(action) {
+        const { source, target, ships } = action;
+        
+        if (!source.canSendShips(ships)) {
+            console.log(`🤖 AI cannot send ${ships} ships from planet ${source.id}`);
+            return;
+        }
+        
+        // Create fleet
+        FleetManager.createFleet(source, target, ships, 'ai');
     }
 };
