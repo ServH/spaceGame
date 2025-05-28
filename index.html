@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Game - Galcon Inspired RTS</title>
+    <meta name="description" content="Space Conquest - Juego de estrategia en tiempo real inspirado en Galcon">
+    <meta name="keywords" content="juego, estrategia, espacio, RTS, galcon">
+    <title>Space Game - Galcon Inspired RTS V1.3</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -18,7 +20,7 @@
                 
                 <div class="game-title">
                     <h1>SPACE CONQUEST</h1>
-                    <div id="gameStatus">Arrastra para conquistar</div>
+                    <div id="gameStatus">Selecciona tu modo de juego</div>
                 </div>
                 
                 <div class="ai-stats">
@@ -64,9 +66,21 @@
         </svg>
     </div>
 
-    <!-- V1.2 Enhanced Scripts -->
+    <!-- V1.3 Game Scripts - Load in dependency order -->
+    
+    <!-- Core Systems -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    
+    <!-- V1.3 New Systems -->
+    <script src="js/gameModes.js"></script>
+    <script src="js/victoryConditions.js"></script>
+    <script src="js/enhancedAI.js"></script>
+    <script src="js/gameTimer.js"></script>
+    <script src="js/kingOfHill.js"></script>
+    <script src="js/modeSelector.js"></script>
+    
+    <!-- Game Logic -->
     <script src="js/animations.js"></script>
     <script src="js/planet.js"></script>
     <script src="js/fleet.js"></script>
@@ -74,6 +88,8 @@
     <script src="js/input.js"></script>
     <script src="js/ai.js"></script>
     <script src="js/ui.js"></script>
+    
+    <!-- Main Controller (loads last) -->
     <script src="js/game.js"></script>
 </body>
 </html>
