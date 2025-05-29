@@ -1,4 +1,4 @@
-// Main Game Controller - Restored original functionality
+// Main Game Controller - Fixed for Evolution Action 01
 const Game = {
     initialized: false,
 
@@ -17,12 +17,8 @@ const Game = {
 
     start() {
         try {
-            // Show mode selection first, then initialize game
-            if (window.GameMenu) {
-                GameMenu.show();
-            } else {
-                this.initializeGame();
-            }
+            // FIXED: Skip GameMenu, initialize directly
+            this.initializeGame();
             
             this.initialized = true;
             console.log('✅ Game ready!');
@@ -33,16 +29,16 @@ const Game = {
         }
     },
 
-    // Called by GameMenu or directly if no menu
+    // Initialize game systems
     initializeGame(selectedMode = 'classic') {
         console.log('⚙️ Starting game systems...');
         
-        // Apply balance if available
-        if (window.BalanceConfig) {
+        // FIXED: Skip BalanceConfig if not available
+        if (typeof BalanceConfig !== 'undefined') {
             BalanceConfig.applyMode(selectedMode);
         }
         
-        // Initialize original game systems
+        // Initialize game engine
         GameEngine.init();
         console.log('✅ Game engine initialized');
         
@@ -51,7 +47,9 @@ const Game = {
 
     showWelcomeMessage() {
         setTimeout(() => {
-            UI.setStatus('¡Bienvenido! Conquista todos los planetas para ganar', 3000);
+            if (typeof UI !== 'undefined' && UI.setStatus) {
+                UI.setStatus('¡Evolution Action 01! Drag & Drop para enviar naves', 3000);
+            }
         }, 500);
     },
 
@@ -81,65 +79,23 @@ const Game = {
         console.log('🔄 Restarting game...');
         
         // Clear existing game state
-        FleetManager.clear();
-        GameEngine.planets.forEach(planet => planet.destroy());
-        GameEngine.planets = [];
+        if (typeof FleetManager !== 'undefined') {
+            FleetManager.clear();
+        }
+        
+        if (typeof GameEngine !== 'undefined' && GameEngine.planets) {
+            GameEngine.planets.forEach(planet => planet.destroy());
+            GameEngine.planets = [];
+        }
         
         // Restart
         this.initialized = false;
         this.init();
-    },
-
-    // Debug helpers
-    debug: {
-        logPlanetStats() {
-            console.table(GameEngine.planets.map(p => ({
-                id: p.id,
-                key: p.assignedKey,
-                owner: p.owner,
-                ships: p.ships,
-                capacity: p.capacity,
-                position: `${Math.round(p.x)}, ${Math.round(p.y)}`
-            })));
-        },
-
-        logFleetStats() {
-            console.table(FleetManager.fleets.map(f => ({
-                ships: f.ships,
-                owner: f.owner,
-                progress: `${Math.round((Date.now() - f.startTime) / f.travelTime * 100)}%`
-            })));
-        },
-
-        setAISpeed(intervalMs) {
-            CONFIG.AI.DECISION_INTERVAL = intervalMs;
-            console.log(`AI decision interval set to ${intervalMs}ms`);
-        },
-
-        givePlayerShips(planetId, amount) {
-            const planet = GameEngine.getPlanetById(planetId);
-            if (planet && planet.owner === 'player') {
-                planet.ships = Math.min(planet.capacity, planet.ships + amount);
-                planet.updateVisual();
-                console.log(`Added ${amount} ships to planet ${planetId}`);
-            }
-        },
-
-        winGame() {
-            GameEngine.planets.forEach(planet => {
-                if (planet.owner === 'ai') {
-                    planet.owner = 'player';
-                    planet.updateVisual();
-                }
-            });
-            console.log('Debug: Player wins!');
-        }
     }
 };
 
 // Auto-initialize when script loads
 Game.init();
 
-// Make debug tools available in console
-window.GameDebug = Game.debug;
+// Make available globally
 window.Game = Game;
