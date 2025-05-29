@@ -1,4 +1,4 @@
-// Balance Config - V1.3 Refined with per-mode settings
+// Balance Config - V1.4 Testing-optimized metal generation
 const BalanceConfig = {
     // Base values - normal gameplay
     BASE: {
@@ -8,7 +8,9 @@ const BalanceConfig = {
         FLEET_SPEED: 80,
         CONQUEST_TIME: 2000,
         AI_DECISION_INTERVAL: 3000,
-        CAPACITY_MULTIPLIER: 1.0
+        CAPACITY_MULTIPLIER: 1.0,
+        // Testing optimization - 3x faster metal for gameplay testing
+        TESTING_MODE: true
     },
 
     // Mode-specific multipliers and overrides
@@ -101,7 +103,8 @@ const BalanceConfig = {
             aiDecisionInterval: this.BASE.AI_DECISION_INTERVAL * modeConfig.multipliers.aiSpeed,
             capacityMultiplier: modeConfig.settings.capacityMultiplier,
             minShipsToSend: modeConfig.settings.minShipsToSend,
-            victory: modeConfig.victory
+            victory: modeConfig.victory,
+            testingMode: this.BASE.TESTING_MODE
         };
 
         // Apply to CONFIG
@@ -115,7 +118,8 @@ const BalanceConfig = {
             production: `${modeConfig.multipliers.production}x`,
             speed: `${modeConfig.multipliers.fleetSpeed}x`,
             conquest: `${modeConfig.multipliers.conquest}x`,
-            startShips: this.appliedSettings.startShips
+            startShips: this.appliedSettings.startShips,
+            testingMode: this.BASE.TESTING_MODE ? 'ENABLED (3x metal)' : 'DISABLED'
         });
     },
 
@@ -138,7 +142,8 @@ const BalanceConfig = {
             'Fleet Speed': `${this.MODES[this.currentMode].multipliers.fleetSpeed}x`,
             'Conquest Speed': `${this.MODES[this.currentMode].multipliers.conquest}x`,
             'Time Limit': this.appliedSettings.victory.timeLimit / 1000 + 's',
-            'Early Victory': `${this.appliedSettings.victory.earlyAdvantageThreshold * 100}%`
+            'Early Victory': `${this.appliedSettings.victory.earlyAdvantageThreshold * 100}%`,
+            'Testing Mode': this.BASE.TESTING_MODE ? 'ON (3x metal)' : 'OFF'
         });
     }
 };
