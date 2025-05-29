@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Space Conquest - Juego de estrategia en tiempo real inspirado en Galcon">
     <meta name="keywords" content="juego, estrategia, espacio, RTS, galcon">
-    <title>Space Game - Galcon Inspired RTS V1.3</title>
+    <title>Space Game - Galcon Inspired RTS V1.3 Polish</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -31,7 +31,7 @@
 
             <div class="ui-bottom">
                 <div class="shortcuts-info" id="shortcutsInfo">
-                    <div>Controles: Ratón (arrastra) | Teclado (origen → destino)</div>
+                    <div>Controles: Ratón (arrastra) | Teclado (origen → destino) | Ctrl+2/3/4 (25%/50%/100%)</div>
                 </div>
             </div>
         </div>
@@ -66,19 +66,26 @@
         </svg>
     </div>
 
-    <!-- V1.3 Game Scripts - Load in dependency order -->
+    <!-- V1.3 Polish Game Scripts - Load in dependency order -->
     
     <!-- Core Systems -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     
-    <!-- V1.3 New Systems -->
+    <!-- V1.3 Game Mode Systems -->
     <script src="js/gameModes.js"></script>
     <script src="js/victoryConditions.js"></script>
     <script src="js/enhancedAI.js"></script>
     <script src="js/gameTimer.js"></script>
     <script src="js/kingOfHill.js"></script>
     <script src="js/modeSelector.js"></script>
+    
+    <!-- V1.3 Polish Enhancement Systems -->
+    <script src="js/notificationSystem.js"></script>
+    <script src="js/smartFleetSystem.js"></script>
+    <script src="js/victoryMonitor.js"></script>
+    <script src="js/aiPersonalitySystem.js"></script>
+    <script src="js/balanceTuner.js"></script>
     
     <!-- Game Logic -->
     <script src="js/animations.js"></script>
