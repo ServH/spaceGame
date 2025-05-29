@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Game V1.3 - Galcon RTS</title>
+    <title>Space Game V1.3 Evolution - Action 01 Resource System</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -18,7 +18,7 @@
                 
                 <div class="game-title">
                     <h1>SPACE CONQUEST</h1>
-                    <div id="gameStatus">¡Conquista todos los planetas!</div>
+                    <div id="gameStatus">¡Conquista todos los planetas! (Evolution: Resources Active)</div>
                 </div>
                 
                 <div class="ai-stats">
@@ -29,7 +29,7 @@
 
             <div class="ui-bottom">
                 <div class="shortcuts-info" id="shortcutsInfo">
-                    <div>Controles: Drag & Drop o teclas asignadas a planetas. Conquista todos para ganar.</div>
+                    <div>Controles: Drag & Drop o teclas asignadas. Las naves cuestan metal. Haz clic en recursos para expandir.</div>
                 </div>
             </div>
         </div>
@@ -64,10 +64,16 @@
         </svg>
     </div>
 
-    <!-- Core Scripts (Original Order) -->
+    <!-- Core Scripts (Load Order Important) -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/balanceConfig.js"></script>
+    
+    <!-- Evolution Action 01: Resource System -->
+    <script src="js/resourceManager.js"></script>
+    <script src="js/resourceUI.js"></script>
+    
+    <!-- Core Game Systems -->
     <script src="js/planet.js"></script>
     <script src="js/fleet.js"></script>
     <script src="js/gameEngine.js"></script>
