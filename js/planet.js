@@ -1,4 +1,4 @@
-// Planet class - V1.3 Enhanced with King of Hill bonuses
+// Planet class - V1.3 Enhanced with Notification Integration
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -21,6 +21,10 @@ class Planet {
         // V1.3: King of Hill properties
         this.isHill = false;
         this.hillProductionBonus = 1.0;
+        
+        // V1.3 Polish: Attack tracking
+        this.lastAttackTime = 0;
+        this.attackCooldown = 2000; // 2 seconds between attack notifications
         
         // Visual
         this.element = null;
@@ -165,10 +169,16 @@ class Planet {
             if (typeof Animations !== 'undefined') {
                 Animations.createConquestProgress(this);
             }
+
+            // V1.3 Polish: Notify if player planet being conquered by AI
+            if (this.owner === 'player' && newOwner === 'ai') {
+                this.notifyAttack(newOwner);
+            }
         }
     }
 
     completeConquest() {
+        const previousOwner = this.owner;
         this.owner = this.conqueror;
         this.isBeingConquered = false;
         this.conqueror = null;
@@ -180,11 +190,22 @@ class Planet {
         if (typeof Animations !== 'undefined') {
             Animations.removeAnimation(`conquest_${this.id}`);
         }
+
+        // V1.3 Polish: Notify important captures
+        if (this.isHill && typeof NotificationSystem !== 'undefined') {
+            NotificationSystem.notifyEvent('hill_captured', {
+                controller: this.owner,
+                planet: this
+            });
+        }
         
         UI.updateStats();
     }
 
     attack(attackerShips, attacker) {
+        const wasPlayerPlanet = this.owner === 'player';
+        const isAIAttacking = attacker === 'ai';
+
         if (this.isBeingConquered && this.conqueror !== attacker) {
             this.isBeingConquered = false;
             this.conqueror = null;
@@ -195,8 +216,14 @@ class Planet {
         }
         
         if (this.owner === attacker) {
+            // Reinforcement
             this.ships = Math.min(this.capacity, this.ships + attackerShips);
         } else {
+            // V1.3 Polish: Notify player planet under attack
+            if (wasPlayerPlanet && isAIAttacking) {
+                this.notifyAttack(attacker);
+            }
+
             // V1.2: Add battle animation
             if (typeof Animations !== 'undefined') {
                 Animations.createBattleEffect(this);
@@ -206,6 +233,14 @@ class Planet {
                 this.owner = attacker;
                 this.ships = attackerShips - this.ships;
                 this.lastProduction = Date.now();
+
+                // V1.3 Polish: Special notification for hill capture
+                if (this.isHill && typeof NotificationSystem !== 'undefined') {
+                    NotificationSystem.notifyEvent('hill_captured', {
+                        controller: attacker,
+                        planet: this
+                    });
+                }
             } else {
                 this.ships -= attackerShips;
             }
@@ -213,6 +248,20 @@ class Planet {
         
         this.updateVisual();
         UI.updateStats();
+    }
+
+    // V1.3 Polish: Notify attack with cooldown
+    notifyAttack(attacker) {
+        const now = Date.now();
+        if (now - this.lastAttackTime < this.attackCooldown) {
+            return; // Still in cooldown
+        }
+
+        this.lastAttackTime = now;
+
+        if (typeof NotificationSystem !== 'undefined') {
+            NotificationSystem.notifyPlanetAttack(this, attacker);
+        }
     }
 
     canSendShips(amount) {
@@ -252,7 +301,7 @@ class Planet {
         }
     }
 
-    // V1.3: Get planet info for tooltip (enhanced)
+    // V1.3 Polish: Enhanced tooltip with incoming fleets
     getTooltipInfo() {
         const ownerName = this.owner === 'player' ? 'Jugador' : 
                          this.owner === 'ai' ? 'IA' : 'Neutral';
@@ -263,6 +312,31 @@ class Planet {
         if (this.owner !== 'neutral') {
             const effectiveRate = this.getEffectiveProductionRate();
             info += `Producción: ${effectiveRate.toFixed(1)}/s<br>`;
+            
+            // Time to fill capacity
+            if (this.ships < this.capacity) {
+                const timeToFill = (this.capacity - this.ships) / effectiveRate;
+                info += `Llenar en: ${Math.ceil(timeToFill)}s<br>`;
+            }
+        }
+
+        // Show conquest progress
+        if (this.isBeingConquered) {
+            const progress = Math.round((1 - this.conquestTimer / CONFIG.PLANETS.CONQUEST_TIME) * 100);
+            const conquerorName = this.conqueror === 'player' ? 'Jugador' : 'IA';
+            info += `<span style="color: #ffff00;">Conquistando: ${progress}% (${conquerorName})</span><br>`;
+        }
+
+        // Show incoming fleets
+        const incomingFleets = this.getIncomingFleets();
+        if (incomingFleets.player > 0 || incomingFleets.ai > 0) {
+            info += `<strong>En camino:</strong><br>`;
+            if (incomingFleets.player > 0) {
+                info += `🟢 ${incomingFleets.player} naves<br>`;
+            }
+            if (incomingFleets.ai > 0) {
+                info += `🔴 ${incomingFleets.ai} naves<br>`;
+            }
         }
         
         if (this.isHill) {
@@ -272,6 +346,21 @@ class Planet {
         }
         
         return info;
+    }
+
+    // V1.3 Polish: Get incoming fleets count
+    getIncomingFleets() {
+        const incoming = { player: 0, ai: 0 };
+        
+        if (typeof FleetManager !== 'undefined' && FleetManager.fleets) {
+            FleetManager.fleets.forEach(fleet => {
+                if (fleet.destination && fleet.destination.id === this.id) {
+                    incoming[fleet.owner] += fleet.ships;
+                }
+            });
+        }
+        
+        return incoming;
     }
 
     destroy() {
