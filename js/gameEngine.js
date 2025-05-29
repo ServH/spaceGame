@@ -1,4 +1,4 @@
-// Game Engine - Classic Evolution Action 01 Integration
+// Game Engine - Classic Evolution Action 01 Integration - FIXED
 // Enhanced with Resource Management System
 
 const GameEngine = {
@@ -177,6 +177,13 @@ const GameEngine = {
         clearInterval(this.gameLoop);
         console.log('🏁 Game ended:', message);
         UI.setStatus(message, 5000);
+    },
+
+    // FIXED: Add missing getPlanetAt function
+    getPlanetAt(x, y) {
+        return this.planets.find(planet => 
+            Utils.pointInCircle({ x, y }, { x: planet.x, y: planet.y, radius: planet.radius })
+        );
     },
 
     getPlanetById(id) {
