@@ -1,6 +1,4 @@
-// Game Engine - Classic Evolution Action 01 Integration - FIXED
-// Enhanced with Resource Management System
-
+// Game Engine - Classic Evolution Action 01 - FIXED COMPATIBILITY
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -19,30 +17,33 @@ const GameEngine = {
         this.assignInitialPlanets();
         this.assignKeyboardShortcuts();
         
-        // Initialize original systems
+        // Initialize available systems (check existence first)
         if (typeof Animations !== 'undefined') {
             Animations.init();
         }
         
-        if (typeof EnhancedAI !== 'undefined') {
-            EnhancedAI.init();
+        if (typeof AI !== 'undefined') {
+            AI.init();
         }
         
-        UI.init();
-        InputManager.init();
+        if (typeof UI !== 'undefined') {
+            UI.init();
+        }
+        
+        if (typeof InputManager !== 'undefined') {
+            InputManager.init();
+        }
+        
         this.start();
     },
 
-    // Evolution: Initialize all evolution systems
     initEvolutionSystems() {
         console.log('✨ Initializing Evolution Systems...');
         
-        // Initialize ResourceManager first
         if (typeof ResourceManager !== 'undefined') {
             ResourceManager.init();
         }
         
-        // Initialize ResourceUI
         if (typeof ResourceUI !== 'undefined') {
             ResourceUI.init();
         }
@@ -83,9 +84,7 @@ const GameEngine = {
     },
 
     assignInitialPlanets() {
-        // Evolution: Use ResourceManager starting metal or fallback
-        const startShips = (typeof ResourceManager !== 'undefined' && CONFIG.BALANCE) ? 
-                          CONFIG.BALANCE.STARTING_METAL || 10 : 10;
+        const startShips = 10; // Fixed value for testing
         
         // Player gets first planet
         this.planets[0].owner = 'player';
@@ -142,7 +141,9 @@ const GameEngine = {
         });
         
         // Update fleets
-        FleetManager.update();
+        if (typeof FleetManager !== 'undefined') {
+            FleetManager.update();
+        }
         
         // Evolution: Update resource systems
         if (typeof ResourceManager !== 'undefined') {
@@ -154,10 +155,22 @@ const GameEngine = {
         }
         
         // Update UI
-        UI.update();
+        if (typeof UI !== 'undefined') {
+            UI.update();
+        }
+        
+        // Basic AI decisions
+        this.updateAI();
         
         // Check victory conditions
         this.checkVictoryConditions();
+    },
+
+    // FIXED: Simple AI update
+    updateAI() {
+        if (typeof AI !== 'undefined' && AI.update) {
+            AI.update();
+        }
     },
 
     checkVictoryConditions() {
@@ -176,10 +189,13 @@ const GameEngine = {
         this.isRunning = false;
         clearInterval(this.gameLoop);
         console.log('🏁 Game ended:', message);
-        UI.setStatus(message, 5000);
+        
+        if (typeof UI !== 'undefined' && UI.setStatus) {
+            UI.setStatus(message, 5000);
+        }
     },
 
-    // FIXED: Add missing getPlanetAt function
+    // Essential functions for Input system
     getPlanetAt(x, y) {
         return this.planets.find(planet => 
             Utils.pointInCircle({ x, y }, { x: planet.x, y: planet.y, radius: planet.radius })
@@ -190,93 +206,7 @@ const GameEngine = {
         return this.planets.find(p => p.id === id);
     },
 
-    getPlanetByKey(key) {
-        return this.planets.find(p => p.assignedKey === key.toLowerCase());
-    },
-
-    // Evolution: Enhanced sendFleet with resource integration
-    sendFleet(fromPlanet, toPlanet, shipCount) {
-        if (!fromPlanet || !toPlanet || fromPlanet === toPlanet) return false;
-        if (fromPlanet.owner !== 'player') return false;
-        
-        const shipsToSend = shipCount || Math.floor(fromPlanet.ships * 0.5);
-        if (shipsToSend < 1) return false;
-        
-        // Evolution: Check resource costs for player fleets
-        if (typeof ResourceManager !== 'undefined') {
-            const canAfford = FleetManager.canCreateFleet(fromPlanet, toPlanet, shipsToSend, 'player');
-            if (!canAfford.canCreate) {
-                console.log(`🚫 Cannot send fleet: ${canAfford.reason}`);
-                if (canAfford.reason === 'insufficient_resources') {
-                    console.log(`💰 Need ${canAfford.need} metal, have ${canAfford.have}`);
-                }
-                return false;
-            }
-        }
-        
-        // Use FleetManager which handles resource costs
-        const fleet = FleetManager.createFleet(fromPlanet, toPlanet, shipsToSend, 'player');
-        return fleet !== null;
-    },
-
-    // Evolution: Get game statistics including resources
-    getGameStats() {
-        const playerPlanets = this.planets.filter(p => p.owner === 'player');
-        const aiPlanets = this.planets.filter(p => p.owner === 'ai');
-        const neutralPlanets = this.planets.filter(p => p.owner === 'neutral');
-        
-        const stats = {
-            player: {
-                planets: playerPlanets.length,
-                ships: playerPlanets.reduce((sum, p) => sum + p.ships, 0),
-                inTransit: FleetManager.getShipsInTransit('player')
-            },
-            ai: {
-                planets: aiPlanets.length,
-                ships: aiPlanets.reduce((sum, p) => sum + p.ships, 0),
-                inTransit: FleetManager.getShipsInTransit('ai')
-            },
-            neutral: neutralPlanets.length,
-            total: this.planets.length
-        };
-        
-        // Evolution: Add resource information
-        if (typeof ResourceManager !== 'undefined') {
-            stats.player.metal = ResourceManager.getMetal();
-            stats.player.metalCapacity = ResourceManager.getTotalStorageCapacity();
-            stats.player.metalGeneration = ResourceManager.getTotalMetalGeneration();
-        }
-        
-        return stats;
-    },
-
-    // Evolution: Reset game with resource systems
-    reset() {
-        this.isRunning = false;
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
-        }
-        
-        // Clear fleets
-        FleetManager.clear();
-        
-        // Clear planets
-        this.planets.forEach(planet => planet.destroy());
-        this.planets = [];
-        
-        // Evolution: Reset resource systems
-        if (typeof ResourceManager !== 'undefined') {
-            ResourceManager.reset();
-        }
-        
-        if (typeof ResourceUI !== 'undefined') {
-            ResourceUI.update();
-        }
-        
-        console.log('🔄 Game reset with evolution systems');
-    },
-
-    // Evolution: Debug methods for testing
+    // Debug methods
     debugAddMetal(amount) {
         if (typeof ResourceManager !== 'undefined') {
             ResourceManager.debugAddMetal(amount);
@@ -288,11 +218,5 @@ const GameEngine = {
             return ResourceManager.debugInfo();
         }
         return null;
-    },
-
-    debugGameStats() {
-        const stats = this.getGameStats();
-        console.table(stats);
-        return stats;
     }
 };
