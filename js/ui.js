@@ -1,4 +1,4 @@
-// UI Manager - V1.3 Basic functionality + Evolution Integration
+// UI Manager - FIXED for integer display and Evolution integration
 const UI = {
     initialized: false,
     tooltip: null,
@@ -19,11 +19,9 @@ const UI = {
         this.initialized = true;
         console.log('UI initialized');
         
-        // Start update loop
         this.updateLoop();
     },
     
-    // FIXED: Add missing tooltip functions
     createTooltip() {
         this.tooltip = document.createElement('div');
         this.tooltip.id = 'gameTooltip';
@@ -66,7 +64,6 @@ const UI = {
     
     update() {
         this.updateStats();
-        this.updateStatus();
     },
     
     updateStats() {
@@ -78,10 +75,10 @@ const UI = {
         GameEngine.planets.forEach(planet => {
             if (planet.owner === 'player') {
                 playerPlanets++;
-                playerShips += planet.ships;
+                playerShips += Math.floor(planet.ships); // FIXED: Integer only
             } else if (planet.owner === 'ai') {
                 aiPlanets++;
-                aiShips += planet.ships;
+                aiShips += Math.floor(planet.ships); // FIXED: Integer only
             }
         });
         
@@ -91,30 +88,17 @@ const UI = {
         if (this.elements.aiShips) this.elements.aiShips.textContent = aiShips;
     },
     
-    updateStatus() {
-        if (window.UIExtensions && UIExtensions.updateModeStatus) {
-            UIExtensions.updateModeStatus();
-        }
-    },
-    
     setStatus(message, duration = 3000) {
         if (this.elements.gameStatus) {
             this.elements.gameStatus.textContent = message;
             
             if (duration > 0) {
                 setTimeout(() => {
-                    if (window.UIExtensions) {
-                        UIExtensions.updateModeStatus();
+                    if (this.elements.gameStatus) {
+                        this.elements.gameStatus.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
                     }
                 }, duration);
             }
-        }
-    },
-    
-    initModeUI() {
-        if (window.UIExtensions) {
-            UIExtensions.updateShortcutsInfo();
-            UIExtensions.highlightCenterPlanet();
         }
     }
 };
