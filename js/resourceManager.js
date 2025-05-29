@@ -1,4 +1,4 @@
-// Resource Manager - Classic Evolution Action 01 - FIXED
+// Resource Manager - Classic Evolution Action 01 - TESTING OPTIMIZED
 // Manages metal resource generation, storage, and consumption
 
 const ResourceManager = {
@@ -14,11 +14,11 @@ const ResourceManager = {
     // Configuration
     config: {
         metal: {
-            // Base generation rates by planet capacity
+            // Base generation rates by planet capacity - TESTING: 3x faster
             generationRates: {
-                small: 1.5,   // 1-10 capacity
-                medium: 2.5,  // 11-20 capacity  
-                large: 3.5    // 21+ capacity
+                small: 4.5,   // 1-10 capacity (was 1.5)
+                medium: 7.5,  // 11-20 capacity (was 2.5)
+                large: 10.5   // 21+ capacity (was 3.5)
             },
             // Storage is based on planet capacity
             storageMultiplier: 1.0, // 1:1 ratio with planet capacity
@@ -29,16 +29,16 @@ const ResourceManager = {
 
     // Initialize resource system
     init() {
-        this.resources.metal = CONFIG.BALANCE ? CONFIG.BALANCE.STARTING_METAL || 10 : 10;
+        this.resources.metal = CONFIG.BALANCE ? CONFIG.BALANCE.STARTING_METAL || 25 : 25; // More starting metal for testing
         this.lastUpdate = Date.now();
-        console.log('💎 Resource Manager initialized with', this.resources.metal, 'metal');
+        console.log('💎 Resource Manager initialized with', this.resources.metal, 'metal (TESTING MODE: 3x generation)');
         
         // Add starting metal to config if not exists
         if (!CONFIG.BALANCE) {
             CONFIG.BALANCE = {};
         }
         if (!CONFIG.BALANCE.STARTING_METAL) {
-            CONFIG.BALANCE.STARTING_METAL = 10;
+            CONFIG.BALANCE.STARTING_METAL = 25; // Increased for testing
         }
     },
 
@@ -78,6 +78,11 @@ const ResourceManager = {
 
         if (totalGeneration > 0) {
             this.addMetal(totalGeneration);
+            
+            // Show generation feedback in UI
+            if (typeof ResourceUI !== 'undefined' && ResourceUI.showGenerationPulse) {
+                ResourceUI.showGenerationPulse();
+            }
         }
     },
 
@@ -94,7 +99,11 @@ const ResourceManager = {
             rate = this.config.metal.generationRates.large;
         }
 
-        // TODO: Apply building bonuses when building system is implemented
+        // Apply testing mode multiplier if enabled
+        if (BalanceConfig && BalanceConfig.BASE && BalanceConfig.BASE.TESTING_MODE) {
+            return rate; // Already 3x in config
+        }
+
         return rate;
     },
 
@@ -136,6 +145,12 @@ const ResourceManager = {
             this.updateUI();
             return true;
         }
+        
+        // Show insufficient resources feedback
+        if (typeof ResourceUI !== 'undefined' && ResourceUI.showInsufficientResources) {
+            ResourceUI.showInsufficientResources();
+        }
+        
         return false;
     },
 
@@ -177,6 +192,11 @@ const ResourceManager = {
         if (compactDisplay) {
             compactDisplay.textContent = `🔩 ${this.getMetal()}`;
         }
+
+        // Update ResourceUI if available
+        if (typeof ResourceUI !== 'undefined' && ResourceUI.update) {
+            ResourceUI.update();
+        }
     },
 
     // Get total metal generation rate (per minute)
@@ -216,10 +236,10 @@ const ResourceManager = {
 
     // Reset resource system
     reset() {
-        this.resources.metal = CONFIG.BALANCE.STARTING_METAL || 10;
+        this.resources.metal = CONFIG.BALANCE.STARTING_METAL || 25;
         this.lastUpdate = Date.now();
         this.updateUI();
-        console.log('💎 Resource Manager reset');
+        console.log('💎 Resource Manager reset (TESTING MODE)');
     },
 
     // Debug methods
@@ -233,7 +253,8 @@ const ResourceManager = {
             metal: this.getMetal(),
             capacity: this.getTotalStorageCapacity(),
             generation: this.getTotalMetalGeneration(),
-            ownedPlanets: GameEngine.planets.filter(p => p.owner === 'player').length
+            ownedPlanets: GameEngine.planets.filter(p => p.owner === 'player').length,
+            testingMode: BalanceConfig && BalanceConfig.BASE && BalanceConfig.BASE.TESTING_MODE
         };
         
         console.table(info);
