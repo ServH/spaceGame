@@ -1,4 +1,4 @@
-// Input Manager - Fixed hover with pointer-events and positioning
+// Input Manager - Fixed hover with tooltip integration
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -32,7 +32,7 @@ const InputManager = {
 
     handleMouseDown(e) {
         e.preventDefault();
-        UI.hideTooltip(); // Hide tooltip immediately on click
+        UI.hideTooltip();
         
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
@@ -67,9 +67,7 @@ const InputManager = {
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
         
-        // Only update if planet changed
         if (planet !== this.lastHoveredPlanet) {
-            // Clear previous hover
             if (this.lastHoveredPlanet) {
                 this.lastHoveredPlanet.setHovered(false);
             }
@@ -78,7 +76,6 @@ const InputManager = {
             
             if (planet) {
                 planet.setHovered(true);
-                // Position tooltip away from planet to avoid conflicts
                 this.showPlanetTooltip(planet, e.clientX + 20, e.clientY - 10);
             } else {
                 UI.hideTooltip();
@@ -99,8 +96,8 @@ const InputManager = {
         const rect = canvas.getBoundingClientRect();
         
         return {
-            x: (e.clientX - rect.left) * (CONFIG.GAME.CANVAS_WIDTH / rect.width),
-            y: (e.clientY - rect.top) * (CONFIG.GAME.CANVAS_HEIGHT / rect.height)
+            x: (e.clientX - rect.left) * (800 / rect.width),
+            y: (e.clientY - rect.top) * (600 / rect.height)
         };
     },
 
@@ -114,11 +111,11 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('y1', planet.y);
         this.dragState.dragLine.setAttribute('x2', planet.x);
         this.dragState.dragLine.setAttribute('y2', planet.y);
-        this.dragState.dragLine.setAttribute('stroke', CONFIG.COLORS.PLAYER);
+        this.dragState.dragLine.setAttribute('stroke', '#00ff88');
         this.dragState.dragLine.setAttribute('stroke-width', '3');
         this.dragState.dragLine.setAttribute('stroke-dasharray', '8,4');
         this.dragState.dragLine.setAttribute('opacity', '0.8');
-        this.dragState.dragLine.style.pointerEvents = 'none'; // Prevent interference
+        this.dragState.dragLine.style.pointerEvents = 'none';
         svg.appendChild(this.dragState.dragLine);
     },
 
@@ -212,10 +209,7 @@ const InputManager = {
         if (!origin || !destination || origin === destination) return;
         if (origin.owner !== 'player') return;
         
-        const shipsToSend = Math.min(
-            origin.ships,
-            Math.max(destination.capacity - destination.ships, 1)
-        );
+        const shipsToSend = Math.floor(origin.ships * 0.5);
         
         if (shipsToSend >= 1) {
             FleetManager.createFleet(origin, destination, shipsToSend, 'player');
@@ -230,7 +224,7 @@ const InputManager = {
         line.setAttribute('y1', origin.y);
         line.setAttribute('x2', destination.x);
         line.setAttribute('y2', destination.y);
-        line.setAttribute('stroke', CONFIG.COLORS.PLAYER);
+        line.setAttribute('stroke', '#00ff88');
         line.setAttribute('stroke-width', '4');
         line.setAttribute('opacity', '0.8');
         line.style.pointerEvents = 'none';
@@ -256,12 +250,9 @@ const InputManager = {
     },
 
     showPlanetTooltip(planet, x, y) {
-        const info = `
-            <div><strong>Planeta ${planet.assignedKey}</strong></div>
-            <div>Propietario: ${planet.owner === 'player' ? 'Tuyo' : planet.owner === 'ai' ? 'IA' : 'Neutral'}</div>
-            <div>Naves: ${Math.floor(planet.ships)}/${planet.capacity}</div>
-            <div>Producción: ${planet.productionRate.toFixed(1)}/s</div>
-        `;
+        // FIXED: Use planet's tooltip function if available
+        const info = planet.getTooltipInfo ? planet.getTooltipInfo() : 
+            `<strong>Planeta ${planet.assignedKey}</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
         
         UI.showTooltip(info, x, y);
     }
