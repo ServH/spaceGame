@@ -1,4 +1,4 @@
-// Planet class - Enhanced with V1.2 animations
+// Planet class - Evolution Action 01 - FIXED for integer display and tooltips
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -47,7 +47,7 @@ class Planet {
         this.textElement.setAttribute('font-size', '14');
         this.textElement.setAttribute('font-weight', 'bold');
         this.textElement.setAttribute('class', 'planet-text');
-        this.textElement.textContent = this.ships;
+        this.textElement.textContent = Math.floor(this.ships); // FIXED: Integer only
         svg.appendChild(this.textElement);
         
         this.keyElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -85,7 +85,7 @@ class Planet {
         }
         
         this.element.setAttribute('fill', fill);
-        this.textElement.textContent = Utils.formatNumber(this.ships);
+        this.textElement.textContent = Math.floor(this.ships); // FIXED: Always integer
         
         if (this.isBeingConquered) {
             this.element.setAttribute('stroke', '#ffff00');
@@ -194,6 +194,27 @@ class Planet {
             this.element.removeAttribute('stroke');
             this.element.removeAttribute('stroke-width');
         }
+    }
+
+    // FIXED: Add tooltip function for Evolution
+    getTooltipInfo() {
+        const ownerName = this.owner === 'player' ? 'Jugador' : 
+                         this.owner === 'ai' ? 'IA' : 'Neutral';
+        
+        let info = `<strong>${ownerName}</strong><br>`;
+        info += `Naves: ${Math.floor(this.ships)}/${this.capacity}<br>`;
+        
+        if (this.owner !== 'neutral') {
+            info += `Producción: ${this.productionRate.toFixed(1)}/s<br>`;
+        }
+
+        // Evolution: Add resource info if available
+        if (this.owner === 'player' && typeof ResourceManager !== 'undefined') {
+            const generation = ResourceManager.getPlanetMetalGeneration(this);
+            info += `Metal: +${generation.toFixed(1)}/min<br>`;
+        }
+        
+        return info;
     }
 
     destroy() {
