@@ -1,4 +1,4 @@
-// Input Manager - Fixed hover with pointer-events and positioning
+// Input Manager - V1.3 Polish Enhanced with Smart Fleet Integration
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -14,7 +14,7 @@ const InputManager = {
     init() {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
-        console.log('🎮 Input Manager initialized');
+        console.log('🎮 Input Manager initialized with Smart Fleet integration');
     },
 
     setupMouseEvents() {
@@ -32,12 +32,16 @@ const InputManager = {
 
     handleMouseDown(e) {
         e.preventDefault();
-        UI.hideTooltip(); // Hide tooltip immediately on click
+        UI.hideTooltip();
         
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
         
         if (planet && planet.owner === 'player' && planet.ships > 0) {
+            // V1.3 Polish: Set source planet for smart fleet
+            if (typeof SmartFleetSystem !== 'undefined') {
+                SmartFleetSystem.setSourcePlanet(planet);
+            }
             this.startDrag(planet, pos);
         }
     },
@@ -61,15 +65,17 @@ const InputManager = {
         if (this.dragState.isDragging) {
             this.cancelDrag();
         }
+        // V1.3 Polish: Hide drag preview
+        if (typeof SmartFleetSystem !== 'undefined') {
+            SmartFleetSystem.hideDragPreview();
+        }
     },
 
     handleHover(e) {
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
         
-        // Only update if planet changed
         if (planet !== this.lastHoveredPlanet) {
-            // Clear previous hover
             if (this.lastHoveredPlanet) {
                 this.lastHoveredPlanet.setHovered(false);
             }
@@ -78,7 +84,6 @@ const InputManager = {
             
             if (planet) {
                 planet.setHovered(true);
-                // Position tooltip away from planet to avoid conflicts
                 this.showPlanetTooltip(planet, e.clientX + 20, e.clientY - 10);
             } else {
                 UI.hideTooltip();
@@ -118,7 +123,7 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('stroke-width', '3');
         this.dragState.dragLine.setAttribute('stroke-dasharray', '8,4');
         this.dragState.dragLine.setAttribute('opacity', '0.8');
-        this.dragState.dragLine.style.pointerEvents = 'none'; // Prevent interference
+        this.dragState.dragLine.style.pointerEvents = 'none';
         svg.appendChild(this.dragState.dragLine);
     },
 
@@ -128,6 +133,12 @@ const InputManager = {
         const pos = this.getCanvasPosition(e);
         this.dragState.dragLine.setAttribute('x2', pos.x);
         this.dragState.dragLine.setAttribute('y2', pos.y);
+
+        // V1.3 Polish: Update smart fleet preview
+        if (typeof SmartFleetSystem !== 'undefined') {
+            const targetPlanet = GameEngine.getPlanetAt(pos.x, pos.y);
+            SmartFleetSystem.updateDragPreview(e.clientX, e.clientY, this.dragState.startPlanet, targetPlanet);
+        }
     },
 
     endDrag(e) {
@@ -135,7 +146,13 @@ const InputManager = {
         const targetPlanet = GameEngine.getPlanetAt(pos.x, pos.y);
         
         if (targetPlanet && targetPlanet !== this.dragState.startPlanet) {
-            this.executeFleetCommand(this.dragState.startPlanet, targetPlanet);
+            // V1.3 Polish: Use smart fleet system if available
+            if (typeof SmartFleetSystem !== 'undefined') {
+                SmartFleetSystem.executeSmartSend(this.dragState.startPlanet, targetPlanet);
+            } else {
+                // Fallback to original system
+                this.executeFleetCommand(this.dragState.startPlanet, targetPlanet);
+            }
         }
         
         this.cancelDrag();
@@ -149,6 +166,11 @@ const InputManager = {
         
         this.dragState.isDragging = false;
         this.dragState.startPlanet = null;
+
+        // V1.3 Polish: Reset smart fleet system
+        if (typeof SmartFleetSystem !== 'undefined') {
+            SmartFleetSystem.hideDragPreview();
+        }
     },
 
     handleKeyDown(e) {
@@ -171,6 +193,11 @@ const InputManager = {
                 this.keyboardState.selectedPlanet = planet;
                 this.showPlanetSelection(planet);
                 
+                // V1.3 Polish: Set source for smart fleet
+                if (typeof SmartFleetSystem !== 'undefined') {
+                    SmartFleetSystem.setSourcePlanet(planet);
+                }
+                
                 setTimeout(() => {
                     if (this.keyboardState.selectedPlanet === planet) {
                         this.clearPlanetSelection();
@@ -179,16 +206,27 @@ const InputManager = {
             }
         } else {
             if (planet !== this.keyboardState.selectedPlanet) {
-                this.executeFleetCommand(this.keyboardState.selectedPlanet, planet);
+                // V1.3 Polish: Use smart fleet for keyboard too
+                if (typeof SmartFleetSystem !== 'undefined') {
+                    SmartFleetSystem.executeSmartSend(this.keyboardState.selectedPlanet, planet);
+                } else {
+                    this.executeFleetCommand(this.keyboardState.selectedPlanet, planet);
+                }
             }
             this.clearPlanetSelection();
         }
     },
 
     showPlanetSelection(planet) {
+        // V1.3 Polish: Enhanced visual feedback
         planet.element.setAttribute('stroke', '#ffff00');
         planet.element.setAttribute('stroke-width', '3');
         planet.element.setAttribute('stroke-dasharray', '3,3');
+        
+        // V1.3 Polish: Use notification system for feedback
+        if (typeof NotificationSystem !== 'undefined') {
+            NotificationSystem.showPlanetSelection(planet);
+        }
         
         document.getElementById('gameStatus').textContent = 
             `Planeta ${planet.assignedKey} seleccionado. Elige destino.`;
@@ -198,7 +236,7 @@ const InputManager = {
         if (this.keyboardState.selectedPlanet) {
             const planet = this.keyboardState.selectedPlanet;
             planet.element.removeAttribute('stroke-dasharray');
-            if (!planet.isBeingConquered) {
+            if (!planet.isBeingConquered && !planet.isHill) {
                 planet.element.removeAttribute('stroke');
                 planet.element.removeAttribute('stroke-width');
             }
@@ -206,8 +244,14 @@ const InputManager = {
             this.keyboardState.selectedPlanet = null;
             document.getElementById('gameStatus').textContent = 'Arrastra para conquistar';
         }
+
+        // V1.3 Polish: Reset smart fleet
+        if (typeof SmartFleetSystem !== 'undefined') {
+            SmartFleetSystem.resetSmartSend();
+        }
     },
 
+    // Original fleet command (fallback)
     executeFleetCommand(origin, destination) {
         if (!origin || !destination || origin === destination) return;
         if (origin.owner !== 'player') return;
@@ -256,13 +300,18 @@ const InputManager = {
     },
 
     showPlanetTooltip(planet, x, y) {
-        const info = `
+        // V1.3 Polish: Use enhanced tooltip from planet
+        const info = planet.getTooltipInfo ? planet.getTooltipInfo() : this.getBasicTooltipInfo(planet);
+        UI.showTooltip(info, x, y);
+    },
+
+    // Fallback tooltip info
+    getBasicTooltipInfo(planet) {
+        return `
             <div><strong>Planeta ${planet.assignedKey}</strong></div>
             <div>Propietario: ${planet.owner === 'player' ? 'Tuyo' : planet.owner === 'ai' ? 'IA' : 'Neutral'}</div>
             <div>Naves: ${Math.floor(planet.ships)}/${planet.capacity}</div>
             <div>Producción: ${planet.productionRate.toFixed(1)}/s</div>
         `;
-        
-        UI.showTooltip(info, x, y);
     }
 };
