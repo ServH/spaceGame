@@ -1,4 +1,4 @@
-// Fleet class - Enhanced with V1.2 trail animations
+// Fleet class - Enhanced with V1.2 trail animations + Evolution Resource Integration
 class Fleet {
     constructor(origin, destination, ships, owner) {
         this.id = Date.now() + Math.random();
@@ -21,7 +21,9 @@ class Fleet {
         this.createVisual();
         
         // V1.2: Create trail animation
-        Animations.createFleetTrail(this);
+        if (typeof Animations !== 'undefined') {
+            Animations.createFleetTrail(this);
+        }
     }
 
     createVisual() {
@@ -72,7 +74,9 @@ class Fleet {
         this.textElement.setAttribute('y', this.y - 5);
         
         // V1.2: Update trail
-        Animations.updateFleetTrail(this);
+        if (typeof Animations !== 'undefined') {
+            Animations.updateFleetTrail(this);
+        }
         
         if (progress >= 1) {
             this.arrive();
@@ -84,7 +88,9 @@ class Fleet {
 
     arrive() {
         // V1.2: Fleet arrival animation
-        Animations.animateFleetArrival(this, this.destination);
+        if (typeof Animations !== 'undefined') {
+            Animations.animateFleetArrival(this, this.destination);
+        }
         
         if (this.destination.owner === 'neutral') {
             this.destination.startConquest(this.owner, this.ships);
@@ -100,22 +106,88 @@ class Fleet {
         if (this.textElement) this.textElement.remove();
         
         // V1.2: Remove trail animation
-        Animations.removeAnimation(`trail_${this.id}`);
+        if (typeof Animations !== 'undefined') {
+            Animations.removeAnimation(`trail_${this.id}`);
+        }
     }
 }
 
-// Fleet manager - Enhanced for V1.2
+// Fleet manager - Enhanced for V1.2 + Evolution Resource Integration
 const FleetManager = {
     fleets: [],
 
+    // Evolution: Enhanced createFleet with resource checking
     createFleet(origin, destination, ships, owner) {
+        // Evolution: Check resources for player ships
+        if (owner === 'player' && typeof ResourceManager !== 'undefined') {
+            // Check if player can afford the ships
+            if (!ResourceManager.canAffordShip(ships)) {
+                console.log(`🚫 Cannot create fleet: insufficient resources (need ${ships} metal, have ${ResourceManager.getMetal()})`);
+                
+                // Show insufficient resources feedback
+                if (typeof ResourceUI !== 'undefined') {
+                    ResourceUI.showInsufficientResources();
+                }
+                
+                return null;
+            }
+            
+            // Pay for the ships
+            if (!ResourceManager.payForShips(ships)) {
+                console.log(`🚫 Failed to pay for ships`);
+                return null;
+            }
+            
+            console.log(`💰 Paid ${ships} metal for fleet, remaining: ${ResourceManager.getMetal()}`);
+        }
+
+        // Original ship availability check
         if (origin.canSendShips(ships)) {
             origin.sendShips(ships);
             const fleet = new Fleet(origin, destination, ships, owner);
             this.fleets.push(fleet);
+            
+            console.log(`🚀 Created fleet: ${ships} ships from ${origin.id} to ${destination.id} (${owner})`);
             return fleet;
+        } else {
+            // Evolution: Refund resources if ship sending fails
+            if (owner === 'player' && typeof ResourceManager !== 'undefined') {
+                ResourceManager.addMetal(ships);
+                console.log(`💰 Refunded ${ships} metal due to send failure`);
+            }
         }
+        
         return null;
+    },
+
+    // Evolution: Enhanced ship cost validation
+    canCreateFleet(origin, destination, ships, owner) {
+        // Check basic ship availability
+        if (!origin.canSendShips(ships)) {
+            return { canCreate: false, reason: 'insufficient_ships' };
+        }
+        
+        // Evolution: Check resources for player
+        if (owner === 'player' && typeof ResourceManager !== 'undefined') {
+            if (!ResourceManager.canAffordShip(ships)) {
+                return { 
+                    canCreate: false, 
+                    reason: 'insufficient_resources',
+                    need: ships,
+                    have: ResourceManager.getMetal()
+                };
+            }
+        }
+        
+        return { canCreate: true };
+    },
+
+    // Evolution: Get ship cost for UI display
+    getShipCost(ships = 1) {
+        if (typeof ResourceManager !== 'undefined') {
+            return ResourceManager.config.metal.shipCost * ships;
+        }
+        return 0; // No cost if resource system not available
     },
 
     update() {
@@ -125,5 +197,17 @@ const FleetManager = {
     clear() {
         this.fleets.forEach(fleet => fleet.destroy());
         this.fleets = [];
+    },
+
+    // Evolution: Get fleet count for specific owner
+    getFleetCount(owner) {
+        return this.fleets.filter(fleet => fleet.owner === owner).length;
+    },
+
+    // Evolution: Get total ships in transit for owner
+    getShipsInTransit(owner) {
+        return this.fleets
+            .filter(fleet => fleet.owner === owner)
+            .reduce((total, fleet) => total + fleet.ships, 0);
     }
 };
