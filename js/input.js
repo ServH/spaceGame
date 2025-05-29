@@ -1,4 +1,4 @@
-// Input Manager - Fixed hover with tooltip integration
+// Input Manager - FIXED for full functionality
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -32,7 +32,7 @@ const InputManager = {
 
     handleMouseDown(e) {
         e.preventDefault();
-        UI.hideTooltip();
+        if (UI && UI.hideTooltip) UI.hideTooltip();
         
         const pos = this.getCanvasPosition(e);
         const planet = GameEngine.getPlanetAt(pos.x, pos.y);
@@ -78,7 +78,7 @@ const InputManager = {
                 planet.setHovered(true);
                 this.showPlanetTooltip(planet, e.clientX + 20, e.clientY - 10);
             } else {
-                UI.hideTooltip();
+                if (UI && UI.hideTooltip) UI.hideTooltip();
             }
         }
     },
@@ -88,7 +88,7 @@ const InputManager = {
             this.lastHoveredPlanet.setHovered(false);
             this.lastHoveredPlanet = null;
         }
-        UI.hideTooltip();
+        if (UI && UI.hideTooltip) UI.hideTooltip();
     },
 
     getCanvasPosition(e) {
@@ -149,7 +149,7 @@ const InputManager = {
     },
 
     handleKeyDown(e) {
-        const key = e.key.toUpperCase();
+        const key = e.key.toLowerCase();
         
         if (CONFIG.KEYBOARD.assignments[key] !== undefined) {
             e.preventDefault();
@@ -187,8 +187,10 @@ const InputManager = {
         planet.element.setAttribute('stroke-width', '3');
         planet.element.setAttribute('stroke-dasharray', '3,3');
         
-        document.getElementById('gameStatus').textContent = 
-            `Planeta ${planet.assignedKey} seleccionado. Elige destino.`;
+        const statusEl = document.getElementById('gameStatus');
+        if (statusEl) {
+            statusEl.textContent = `Planeta ${planet.assignedKey} seleccionado. Elige destino.`;
+        }
     },
 
     clearPlanetSelection() {
@@ -201,7 +203,10 @@ const InputManager = {
             }
             
             this.keyboardState.selectedPlanet = null;
-            document.getElementById('gameStatus').textContent = 'Arrastra para conquistar';
+            const statusEl = document.getElementById('gameStatus');
+            if (statusEl) {
+                statusEl.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
+            }
         }
     },
 
@@ -212,8 +217,11 @@ const InputManager = {
         const shipsToSend = Math.floor(origin.ships * 0.5);
         
         if (shipsToSend >= 1) {
-            FleetManager.createFleet(origin, destination, shipsToSend, 'player');
-            this.showFleetLaunch(origin, destination, shipsToSend);
+            // Use FleetManager which handles resource costs
+            const success = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
+            if (success) {
+                this.showFleetLaunch(origin, destination, shipsToSend);
+            }
         }
     },
 
@@ -241,19 +249,22 @@ const InputManager = {
             }
         }, 50);
         
-        document.getElementById('gameStatus').textContent = 
-            `${ships} naves de ${origin.assignedKey} → ${destination.assignedKey}`;
-        
-        setTimeout(() => {
-            document.getElementById('gameStatus').textContent = 'Arrastra para conquistar';
-        }, 2000);
+        const statusEl = document.getElementById('gameStatus');
+        if (statusEl) {
+            statusEl.textContent = `${ships} naves de ${origin.assignedKey} → ${destination.assignedKey}`;
+            
+            setTimeout(() => {
+                statusEl.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
+            }, 2000);
+        }
     },
 
     showPlanetTooltip(planet, x, y) {
-        // FIXED: Use planet's tooltip function if available
         const info = planet.getTooltipInfo ? planet.getTooltipInfo() : 
             `<strong>Planeta ${planet.assignedKey}</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
         
-        UI.showTooltip(info, x, y);
+        if (UI && UI.showTooltip) {
+            UI.showTooltip(info, x, y);
+        }
     }
 };
