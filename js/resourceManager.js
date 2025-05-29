@@ -1,4 +1,4 @@
-// Resource Manager - Classic Evolution Action 01
+// Resource Manager - Classic Evolution Action 01 - FIXED
 // Manages metal resource generation, storage, and consumption
 
 const ResourceManager = {
@@ -68,8 +68,9 @@ const ResourceManager = {
                 const actualGeneration = Math.min(generation / 60, maxStorage - currentStorage); // Per second
                 totalGeneration += actualGeneration;
                 
-                // Visual feedback for generation
-                if (actualGeneration > 0 && typeof Animations !== 'undefined') {
+                // Visual feedback for generation - FIXED: Check if function exists
+                if (actualGeneration > 0 && typeof Animations !== 'undefined' && 
+                    typeof Animations.createResourcePulse === 'function') {
                     Animations.createResourcePulse(planet, 'metal', actualGeneration);
                 }
             }
