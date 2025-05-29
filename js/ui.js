@@ -1,6 +1,7 @@
-// UI Manager - V1.3 Basic functionality for game operation
+// UI Manager - V1.3 Basic functionality + Evolution Integration
 const UI = {
     initialized: false,
+    tooltip: null,
     
     init() {
         if (this.initialized) return;
@@ -14,6 +15,7 @@ const UI = {
             shortcutsInfo: document.getElementById('shortcutsInfo')
         };
         
+        this.createTooltip();
         this.initialized = true;
         console.log('UI initialized');
         
@@ -21,9 +23,43 @@ const UI = {
         this.updateLoop();
     },
     
+    // FIXED: Add missing tooltip functions
+    createTooltip() {
+        this.tooltip = document.createElement('div');
+        this.tooltip.id = 'gameTooltip';
+        this.tooltip.style.cssText = `
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            max-width: 200px;
+            border: 1px solid #444;
+        `;
+        document.body.appendChild(this.tooltip);
+    },
+    
+    showTooltip(content, x, y) {
+        if (!this.tooltip) return;
+        this.tooltip.innerHTML = content;
+        this.tooltip.style.left = x + 'px';
+        this.tooltip.style.top = y + 'px';
+        this.tooltip.style.display = 'block';
+    },
+    
+    hideTooltip() {
+        if (this.tooltip) {
+            this.tooltip.style.display = 'none';
+        }
+    },
+    
     updateLoop() {
         this.update();
-        if (GameEngine.gameState === 'playing') {
+        if (GameEngine.isRunning) {
             requestAnimationFrame(() => this.updateLoop());
         }
     },
