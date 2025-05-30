@@ -1,4 +1,4 @@
-// Input Manager - FIXED mouse coordinate alignment with SVG viewBox
+// Input Manager - FIXED mouse coordinate alignment with proper SVG transformation
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -27,7 +27,7 @@ const InputManager = {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
         this.initialized = true;
-        console.log('🎮 Input Manager initialized with Evolution features');
+        console.log('🎮 Input Manager initialized with corrected coordinates');
     },
 
     setupMouseEvents() {
@@ -38,10 +38,9 @@ const InputManager = {
             return;
         }
         
-        console.log('🖱️ Setting up mouse events on canvas:', canvas);
+        console.log('🖱️ Setting up mouse events on canvas');
         
         canvas.addEventListener('mousedown', (e) => {
-            console.log('🖱️ Mouse down at:', e.clientX, e.clientY);
             this.handleMouseDown(e);
         }, false);
         
@@ -70,10 +69,7 @@ const InputManager = {
         if (UI && UI.hideTooltip) UI.hideTooltip();
         
         const pos = this.getCanvasPosition(e);
-        console.log('🖱️ Mouse down position:', pos);
-        
         const planet = this.getPlanetAt(pos.x, pos.y);
-        console.log('🪐 Planet found:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}, Ships: ${planet.ships}` : 'None');
         
         if (planet && planet.owner === 'player' && planet.ships > 0) {
             console.log('🚀 Starting drag from planet', planet.id);
@@ -91,7 +87,6 @@ const InputManager = {
 
     handleMouseUp(e) {
         if (this.dragState.isDragging) {
-            console.log('🖱️ Mouse up - ending drag');
             this.endDrag(e);
         }
     },
@@ -132,34 +127,25 @@ const InputManager = {
     },
 
     getCanvasPosition(e) {
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
+        const svg = document.getElementById('gameCanvas');
         
-        // Get the actual viewBox dimensions (800x600)
-        const viewBox = canvas.viewBox.baseVal;
-        const viewBoxWidth = viewBox.width;
-        const viewBoxHeight = viewBox.height;
+        // Create an SVG point to handle transformations properly
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
         
-        // Calculate the scale factor
-        const scaleX = viewBoxWidth / rect.width;
-        const scaleY = viewBoxHeight / rect.height;
+        // Transform the point to SVG coordinate space
+        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
         
-        // Convert screen coordinates to SVG coordinates
-        const pos = {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
-        };
-        
-        // Debug logging to verify coordinates
         console.log('🎯 Coordinate conversion:', {
-            screen: { x: e.clientX - rect.left, y: e.clientY - rect.top },
-            rect: { width: rect.width, height: rect.height },
-            viewBox: { width: viewBoxWidth, height: viewBoxHeight },
-            scale: { x: scaleX, y: scaleY },
-            svg: pos
+            screen: { x: e.clientX, y: e.clientY },
+            svg: { x: svgP.x.toFixed(1), y: svgP.y.toFixed(1) }
         });
         
-        return pos;
+        return {
+            x: svgP.x,
+            y: svgP.y
+        };
     },
 
     // Helper method to find planet at position
@@ -169,16 +155,24 @@ const InputManager = {
             return null;
         }
         
+        let closestPlanet = null;
+        let closestDistance = Infinity;
+        
         for (let planet of GameEngine.planets) {
             const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
-            console.log(`🪐 Planet ${planet.id} at (${planet.x}, ${planet.y}), distance: ${distance.toFixed(1)}, radius: ${planet.radius}`);
-            if (distance <= planet.radius + 5) { // Add 5px tolerance for easier clicking
-                console.log(`✅ Found planet ${planet.id}`);
-                return planet;
+            if (distance <= planet.radius + 10) { // 10px tolerance for easier clicking
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestPlanet = planet;
+                }
             }
         }
-        console.log('❌ No planet found at position');
-        return null;
+        
+        if (closestPlanet) {
+            console.log(`✅ Found planet ${closestPlanet.id} at distance ${closestDistance.toFixed(1)}`);
+        }
+        
+        return closestPlanet;
     },
 
     startDrag(planet, pos) {
@@ -197,6 +191,7 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('stroke-dasharray', '8,4');
         this.dragState.dragLine.setAttribute('opacity', '0.8');
         this.dragState.dragLine.style.pointerEvents = 'none';
+        this.dragState.dragLine.setAttribute('class', 'drag-line');
         svg.appendChild(this.dragState.dragLine);
         
         console.log('✅ Drag line created');
@@ -214,7 +209,7 @@ const InputManager = {
         const pos = this.getCanvasPosition(e);
         const targetPlanet = this.getPlanetAt(pos.x, pos.y);
         
-        console.log('🎯 Drag ended at planet:', targetPlanet ? targetPlanet.id : 'None');
+        console.log('🎯 Drag ended - target planet:', targetPlanet ? targetPlanet.id : 'None');
         
         if (targetPlanet && targetPlanet !== this.dragState.startPlanet) {
             console.log('🚀 Executing fleet command');
