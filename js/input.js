@@ -1,4 +1,4 @@
-// Input Manager - FIXED for full functionality
+// Input Manager - ENHANCED with full UI integration and resource feedback
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -14,7 +14,7 @@ const InputManager = {
     init() {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
-        console.log('🎮 Input Manager initialized');
+        console.log('🎮 Input Manager initialized with Evolution features');
     },
 
     setupMouseEvents() {
@@ -217,10 +217,40 @@ const InputManager = {
         const shipsToSend = Math.floor(origin.ships * 0.5);
         
         if (shipsToSend >= 1) {
-            // Use FleetManager which handles resource costs
-            const success = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
-            if (success) {
+            // Check if fleet can be created (including resource costs)
+            const canCreate = FleetManager.canCreateFleet(origin, destination, shipsToSend, 'player');
+            
+            if (!canCreate.canCreate) {
+                // Show appropriate error message
+                if (canCreate.reason === 'insufficient_resources') {
+                    if (UI && UI.showResourceInsufficient) {
+                        UI.showResourceInsufficient('Metal', canCreate.need, canCreate.have);
+                    }
+                } else if (canCreate.reason === 'insufficient_ships') {
+                    if (UI && UI.showNotification) {
+                        UI.showNotification(
+                            `No hay suficientes naves en planeta ${origin.assignedKey}`,
+                            'warning',
+                            3000
+                        );
+                    }
+                }
+                return;
+            }
+            
+            // Create the fleet
+            const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
+            if (fleet) {
                 this.showFleetLaunch(origin, destination, shipsToSend);
+                
+                // Show fleet launched notification
+                if (UI && UI.showFleetLaunched) {
+                    UI.showFleetLaunched(
+                        origin.assignedKey || `P${origin.id}`,
+                        destination.assignedKey || `P${destination.id}`,
+                        shipsToSend
+                    );
+                }
             }
         }
     },
@@ -260,8 +290,27 @@ const InputManager = {
     },
 
     showPlanetTooltip(planet, x, y) {
-        const info = planet.getTooltipInfo ? planet.getTooltipInfo() : 
-            `<strong>Planeta ${planet.assignedKey}</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
+        // Enhanced tooltip with resource information
+        let info = '';
+        
+        if (planet.getTooltipInfo) {
+            info = planet.getTooltipInfo();
+        } else {
+            const ownerName = planet.owner === 'player' ? 'Jugador' : 
+                             planet.owner === 'ai' ? 'IA' : 'Neutral';
+            info = `<strong>${ownerName}</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
+        }
+        
+        // Add resource cost information for player planets
+        if (planet.owner === 'player' && typeof ResourceManager !== 'undefined') {
+            const shipsToSend = Math.floor(planet.ships * 0.5);
+            if (shipsToSend > 0) {
+                const cost = FleetManager.getShipCost(shipsToSend);
+                const canAfford = ResourceManager.canAffordShip(shipsToSend);
+                const costColor = canAfford ? '#00cc88' : '#cc4400';
+                info += `<br><span style="color: ${costColor}">Costo envío: ${cost} metal</span>`;
+            }
+        }
         
         if (UI && UI.showTooltip) {
             UI.showTooltip(info, x, y);
