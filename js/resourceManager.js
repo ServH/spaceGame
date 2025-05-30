@@ -1,4 +1,4 @@
-// Resource Manager - Action 02 Extension - FIXED
+// Resource Manager - Action 02 BALANCED - Fixed initial resources and balance
 // Manages metal and energy resource generation, storage, and consumption
 
 const ResourceManager = {
@@ -15,11 +15,11 @@ const ResourceManager = {
     // Configuration
     config: {
         metal: {
-            // Base generation rates by planet capacity - TESTING: 3x faster
+            // Base generation rates by planet capacity - BALANCED for gameplay
             generationRates: {
-                small: 4.5,   // 1-10 capacity (was 1.5)
-                medium: 7.5,  // 11-20 capacity (was 2.5)
-                large: 10.5   // 21+ capacity (was 3.5)
+                small: 6.0,   // 1-10 capacity - Increased for better balance
+                medium: 9.0,  // 11-20 capacity
+                large: 12.0   // 21+ capacity
             },
             storageMultiplier: 2.0, // 2:1 ratio with planet capacity
             shipCost: 10 // Action 02: Ships cost 10 metal
@@ -32,12 +32,13 @@ const ResourceManager = {
         }
     },
 
-    // Initialize resource system
+    // Initialize resource system with BALANCED starting resources
     init() {
-        this.resources.metal = 50; // More starting metal for building system
-        this.resources.energy = 25; // Starting energy for research labs
+        this.resources.metal = 100; // INCREASED: More starting metal for balanced gameplay
+        this.resources.energy = 50; // INCREASED: More starting energy
         this.lastUpdate = Date.now();
-        console.log('💎 Resource Manager initialized - Metal:', this.resources.metal, 'Energy:', this.resources.energy);
+        console.log('💎 Resource Manager initialized - BALANCED START');
+        console.log('💰 Starting resources - Metal:', this.resources.metal, 'Energy:', this.resources.energy);
         console.log('🏗️ Ship cost: 10 Metal (Action 02)');
     },
 
@@ -120,7 +121,7 @@ const ResourceManager = {
 
     // Storage capacity methods
     getTotalMetalStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 100;
+        if (!GameEngine || !GameEngine.planets) return 200;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
@@ -128,14 +129,14 @@ const ResourceManager = {
     },
 
     getTotalEnergyStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 50;
+        if (!GameEngine || !GameEngine.planets) return 100;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
             .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);
     },
 
-    // LEGACY COMPATIBILITY - Add the old method name that was causing the error
+    // LEGACY COMPATIBILITY
     getTotalStorageCapacity() {
         return this.getTotalMetalStorageCapacity();
     },
@@ -198,7 +199,7 @@ const ResourceManager = {
         const totalCost = this.config.metal.shipCost * shipCount;
         if (this.canAffordShip(shipCount)) {
             this.spendMetal(totalCost);
-            console.log(`💰 Paid ${totalCost} metal for ${shipCount} ship(s)`);
+            console.log(`💰 Paid ${totalCost} metal for ${shipCount} ship(s) - Remaining: ${this.getMetal()}`);
             return true;
         }
         
@@ -206,7 +207,7 @@ const ResourceManager = {
         return false;
     },
 
-    // Legacy methods for compatibility with Action 01 code
+    // Legacy methods for compatibility
     removeMetal(amount) {
         return this.spendMetal(amount);
     },
@@ -217,26 +218,9 @@ const ResourceManager = {
 
     // Update UI elements
     updateUI() {
-        // Update metal display
-        const metalDisplay = document.getElementById('metalDisplay');
-        if (metalDisplay) {
-            const current = this.getMetal();
-            const capacity = this.getTotalMetalStorageCapacity();
-            const rate = this.getTotalMetalGeneration();
-            
-            metalDisplay.textContent = `Metal: ${current}/${capacity} (+${rate.toFixed(1)}/min)`;
-        }
-
-        // Update energy display
-        const energyDisplay = document.getElementById('energyDisplay');
-        if (energyDisplay) {
-            const current = this.getEnergy();
-            const capacity = this.getTotalEnergyStorageCapacity();
-            const rate = this.getTotalEnergyGeneration();
-            
-            energyDisplay.textContent = `Energy: ${current}/${capacity} (+${rate.toFixed(1)}/min)`;
-        }
-
+        // Update main displays at top
+        this.updateMainDisplays();
+        
         // Update compact displays if they exist
         const metalCompact = document.getElementById('metalCompact');
         if (metalCompact) {
@@ -251,6 +235,39 @@ const ResourceManager = {
         // Update ResourceUI if available
         if (typeof ResourceUI !== 'undefined' && ResourceUI.update) {
             ResourceUI.update();
+        }
+    },
+
+    // Update main resource displays in header
+    updateMainDisplays() {
+        // Find or create main resource display
+        let resourceDisplay = document.getElementById('mainResourceDisplay');
+        if (!resourceDisplay) {
+            // Create main resource display in UI top area
+            const uiTop = document.querySelector('.ui-top');
+            if (uiTop) {
+                resourceDisplay = document.createElement('div');
+                resourceDisplay.id = 'mainResourceDisplay';
+                resourceDisplay.style.cssText = `
+                    color: #00ff88;
+                    font-family: 'Courier New', monospace;
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-align: center;
+                    margin: 5px 0;
+                `;
+                uiTop.appendChild(resourceDisplay);
+            }
+        }
+        
+        if (resourceDisplay) {
+            const metalRate = this.getTotalMetalGeneration();
+            const energyRate = this.getTotalEnergyGeneration();
+            
+            resourceDisplay.innerHTML = `
+                🔩 Metal: ${this.getMetal()} (+${metalRate.toFixed(1)}/min) | 
+                ⚡ Energy: ${this.getEnergy()} (+${energyRate.toFixed(1)}/min)
+            `;
         }
     },
 
@@ -308,11 +325,11 @@ const ResourceManager = {
 
     // Reset resource system
     reset() {
-        this.resources.metal = 50;
-        this.resources.energy = 25;
+        this.resources.metal = 100; // BALANCED starting resources
+        this.resources.energy = 50;
         this.lastUpdate = Date.now();
         this.updateUI();
-        console.log('💎 Resource Manager reset - Action 02');
+        console.log('💎 Resource Manager reset - BALANCED MODE');
     },
 
     // Debug methods
