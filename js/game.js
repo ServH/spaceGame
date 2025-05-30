@@ -1,11 +1,11 @@
-// Main Game Controller - Fixed for Evolution Action 01
+// Main Game Controller - V1.4 Classic Evolution Mode
 const Game = {
     initialized: false,
 
     init() {
         if (this.initialized) return;
         
-        console.log('🚀 Initializing Space Game...');
+        console.log('🚀 Initializing Space Game Evolution v1.4...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -17,11 +17,11 @@ const Game = {
 
     start() {
         try {
-            // FIXED: Skip GameMenu, initialize directly
+            // Initialize directly in classic evolution mode
             this.initializeGame();
             
             this.initialized = true;
-            console.log('✅ Game ready!');
+            console.log('✅ Game ready in Classic Evolution mode!');
             
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
@@ -29,18 +29,33 @@ const Game = {
         }
     },
 
-    // Initialize game systems
-    initializeGame(selectedMode = 'classic') {
-        console.log('⚙️ Starting game systems...');
+    // Initialize game systems for classic evolution mode
+    initializeGame() {
+        console.log('⚙️ Starting Classic Evolution game systems...');
         
-        // FIXED: Skip BalanceConfig if not available
+        // Initialize balance configuration for classic mode
         if (typeof BalanceConfig !== 'undefined') {
-            BalanceConfig.applyMode(selectedMode);
+            BalanceConfig.init();
+        }
+        
+        // Initialize resource system (Action 01)
+        if (typeof ResourceManager !== 'undefined') {
+            console.log('💰 Resource system available');
+        }
+        
+        // Initialize building system (Action 02) - will be implemented
+        if (typeof BuildingManager !== 'undefined') {
+            console.log('🏗️ Building system available');
         }
         
         // Initialize game engine
         GameEngine.init();
         console.log('✅ Game engine initialized');
+        
+        // Initialize UI extensions for classic mode
+        if (typeof UIExtensions !== 'undefined') {
+            UIExtensions.init();
+        }
         
         this.showWelcomeMessage();
     },
@@ -48,7 +63,7 @@ const Game = {
     showWelcomeMessage() {
         setTimeout(() => {
             if (typeof UI !== 'undefined' && UI.setStatus) {
-                UI.setStatus('¡Evolution Action 01! Drag & Drop para enviar naves', 3000);
+                UI.setStatus('¡Evolution Action 02! Click derecho en planetas para construir', 3000);
             }
         }, 500);
     },
@@ -66,17 +81,27 @@ const Game = {
             border-radius: 10px;
             z-index: 1000;
             text-align: center;
+            font-family: 'Courier New', monospace;
         `;
         errorDiv.innerHTML = `
             <h3>Error al inicializar el juego</h3>
             <p>${error.message}</p>
-            <button onclick="location.reload()">Reintentar</button>
+            <button onclick="location.reload()" style="
+                background: white;
+                color: #ff4444;
+                border: none;
+                padding: 10px 20px;
+                margin-top: 10px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+            ">Reintentar</button>
         `;
         document.body.appendChild(errorDiv);
     },
 
     restart() {
-        console.log('🔄 Restarting game...');
+        console.log('🔄 Restarting Classic Evolution game...');
         
         // Clear existing game state
         if (typeof FleetManager !== 'undefined') {
@@ -86,6 +111,11 @@ const Game = {
         if (typeof GameEngine !== 'undefined' && GameEngine.planets) {
             GameEngine.planets.forEach(planet => planet.destroy());
             GameEngine.planets = [];
+        }
+        
+        // Clear building state if available
+        if (typeof BuildingManager !== 'undefined') {
+            BuildingManager.reset();
         }
         
         // Restart
