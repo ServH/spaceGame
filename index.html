@@ -8,28 +8,35 @@
 </head>
 <body>
     <div class="game-container">
-        <!-- UI Overlay -->
+        <!-- UI Overlay - CLEANED UP -->
         <div class="ui-overlay">
             <div class="ui-top">
+                <!-- Left: Player Stats -->
                 <div class="player-stats">
                     <div class="stat">Planetas: <span id="playerPlanets">1</span></div>
                     <div class="stat">Naves: <span id="playerShips">15</span></div>
                 </div>
                 
+                <!-- Center: Game Title + Resources -->
                 <div class="game-title">
                     <h1>SPACE CONQUEST</h1>
-                    <div id="gameStatus">¡Conquista todos los planetas! (Evolution: Building System)</div>
+                    <div id="mainResourceDisplay" style="color: #00ff88; font-family: 'Courier New', monospace; font-size: 14px; margin: 5px 0;">
+                        🔩 Metal: 100 (+6.0/min) | ⚡ Energy: 50 (+1.0/min)
+                    </div>
+                    <div id="gameStatus">¡Conquista todos los planetas!</div>
                 </div>
                 
+                <!-- Right: AI Stats -->
                 <div class="ai-stats">
                     <div class="stat">IA Planetas: <span id="aiPlanets">1</span></div>
                     <div class="stat">IA Naves: <span id="aiShips">15</span></div>
                 </div>
             </div>
 
+            <!-- Bottom: Clean Controls Info -->
             <div class="ui-bottom">
                 <div class="shortcuts-info" id="shortcutsInfo">
-                    <div>Controles: Drag & Drop o teclas asignadas. Click derecho en planetas para construir edificios.</div>
+                    <div>Drag & Drop para enviar naves | Click derecho para construir edificios</div>
                 </div>
             </div>
         </div>
