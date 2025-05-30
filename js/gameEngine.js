@@ -1,4 +1,4 @@
-// Game Engine - Classic Evolution Action 01 - STREAMLINED
+// Game Engine - Action 02 Building System Integration
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -6,11 +6,11 @@ const GameEngine = {
     isRunning: false,
     
     init() {
-        console.log('🚀 Initializing Game Engine with Evolution Systems...');
+        console.log('🚀 Initializing Game Engine with Action 02 Building System...');
         this.canvas = document.getElementById('gameCanvas');
         this.setupCanvas();
         
-        // Evolution: Initialize resource systems first
+        // Action 02: Initialize all evolution systems
         this.initEvolutionSystems();
         
         this.generatePlanets();
@@ -40,8 +40,9 @@ const GameEngine = {
     },
 
     initEvolutionSystems() {
-        console.log('✨ Initializing Evolution Systems...');
+        console.log('✨ Initializing Action 02 Evolution Systems...');
         
+        // Action 01: Resource system
         if (typeof ResourceManager !== 'undefined') {
             ResourceManager.init();
         }
@@ -50,7 +51,23 @@ const GameEngine = {
             ResourceUI.init();
         }
         
-        console.log('✅ Evolution Systems initialized');
+        // Action 02: Building system
+        if (typeof BuildingManager !== 'undefined') {
+            BuildingManager.init();
+            console.log('🏗️ Building Manager initialized');
+        }
+        
+        if (typeof BuildingUI !== 'undefined') {
+            BuildingUI.init();
+            console.log('🖥️ Building UI initialized');
+        }
+        
+        // Initialize balance config for classic mode
+        if (typeof BalanceConfig !== 'undefined') {
+            BalanceConfig.init();
+        }
+        
+        console.log('✅ Action 02 Evolution Systems initialized');
     },
 
     setupCanvas() {
@@ -85,10 +102,18 @@ const GameEngine = {
             } while (attempts < 50 && this.planets.some(p => Utils.distance(p, planet) < minDistance));
             
             const newPlanet = new Planet(planet.x, planet.y, planet.capacity, i);
+            
+            // Action 02: Initialize building properties
+            newPlanet.buildings = {};
+            newPlanet.shipProductionMultiplier = 1.0;
+            newPlanet.metalGenerationMultiplier = 1.0;
+            newPlanet.energyGenerationBonus = 0;
+            newPlanet.researchPointsGeneration = 0;
+            
             this.planets.push(newPlanet);
         }
         
-        console.log(`✅ Generated ${numPlanets} planets`);
+        console.log(`✅ Generated ${numPlanets} planets with building support`);
     },
 
     assignInitialPlanets() {
@@ -133,7 +158,7 @@ const GameEngine = {
     },
 
     start() {
-        console.log('🎮 Starting enhanced game loop...');
+        console.log('🎮 Starting Action 02 enhanced game loop...');
         this.isRunning = true;
         this.gameLoop = setInterval(() => {
             this.update();
@@ -153,7 +178,7 @@ const GameEngine = {
             FleetManager.update();
         }
         
-        // Evolution: Update resource systems
+        // Action 01: Update resource systems
         if (typeof ResourceManager !== 'undefined') {
             ResourceManager.update();
         }
@@ -161,6 +186,9 @@ const GameEngine = {
         if (typeof ResourceUI !== 'undefined') {
             ResourceUI.update();
         }
+        
+        // Action 02: Update building system (handled internally by BuildingManager)
+        // BuildingManager has its own update loop, so no need to call here
         
         // Update UI
         if (typeof UI !== 'undefined') {
@@ -170,11 +198,10 @@ const GameEngine = {
         // Basic AI decisions
         this.updateAI();
         
-        // Check victory conditions
+        // Check victory conditions using BalanceConfig
         this.checkVictoryConditions();
     },
 
-    // FIXED: Simple AI update
     updateAI() {
         if (typeof AI !== 'undefined' && AI.update) {
             AI.update();
@@ -186,6 +213,41 @@ const GameEngine = {
         const aiPlanets = this.planets.filter(p => p.owner === 'ai').length;
         const totalPlanets = this.planets.length;
         
+        // Get player and AI ship counts
+        const playerShips = this.getPlayerStats().ships;
+        const aiShips = this.getAIStats().ships;
+        
+        // Use BalanceConfig for victory conditions if available
+        if (typeof BalanceConfig !== 'undefined' && BalanceConfig.checkVictoryConditions) {
+            const victory = BalanceConfig.checkVictoryConditions(
+                playerPlanets, aiPlanets, totalPlanets, playerShips, aiShips
+            );
+            
+            if (victory) {
+                let message = '';
+                switch (victory.condition) {
+                    case 'total_control':
+                        message = victory.winner === 'player' ? 
+                            '¡Victoria Total! Has conquistado todos los planetas' :
+                            '¡Derrota! La IA ha conquistado todos los planetas';
+                        break;
+                    case 'early_advantage':
+                        message = victory.winner === 'player' ?
+                            '¡Victoria por Dominio! Controlas la mayoría de planetas' :
+                            '¡Derrota! La IA domina la galaxia';
+                        break;
+                    case 'economic':
+                        message = victory.winner === 'player' ?
+                            '¡Victoria Económica! Tu flota es dominante' :
+                            '¡Derrota! La flota IA es superior';
+                        break;
+                }
+                this.endGame(message);
+                return;
+            }
+        }
+        
+        // Fallback to simple victory conditions
         if (playerPlanets === totalPlanets) {
             this.endGame('¡Victoria! Has conquistado todos los planetas');
         } else if (aiPlanets === totalPlanets) {
@@ -203,11 +265,54 @@ const GameEngine = {
         }
     },
 
-    // REMOVED: getPlanetAt - Now handled by InputManager directly
-    // This avoids conflicts and simplifies the code
+    // Get player statistics
+    getPlayerStats() {
+        const playerPlanets = this.planets.filter(p => p.owner === 'player');
+        const ships = playerPlanets.reduce((total, planet) => total + planet.ships, 0);
+        
+        return {
+            planets: playerPlanets.length,
+            ships: ships,
+            planetsData: playerPlanets
+        };
+    },
+
+    // Get AI statistics  
+    getAIStats() {
+        const aiPlanets = this.planets.filter(p => p.owner === 'ai');
+        const ships = aiPlanets.reduce((total, planet) => total + planet.ships, 0);
+        
+        return {
+            planets: aiPlanets.length,
+            ships: ships,
+            planetsData: aiPlanets
+        };
+    },
 
     getPlanetById(id) {
         return this.planets.find(p => p.id === id);
+    },
+
+    // Action 02: Building-related methods
+    getBuildingStats() {
+        const playerPlanets = this.planets.filter(p => p.owner === 'player');
+        let buildingCount = 0;
+        let constructing = 0;
+        
+        playerPlanets.forEach(planet => {
+            if (planet.buildings) {
+                Object.values(planet.buildings).forEach(building => {
+                    if (building.level > 0) buildingCount++;
+                    if (building.constructing) constructing++;
+                });
+            }
+        });
+        
+        return {
+            completed: buildingCount,
+            constructing: constructing,
+            playerPlanets: playerPlanets.length
+        };
     },
 
     // Debug methods
@@ -217,11 +322,29 @@ const GameEngine = {
         }
     },
 
+    debugAddEnergy(amount) {
+        if (typeof ResourceManager !== 'undefined') {
+            ResourceManager.debugAddEnergy(amount);
+        }
+    },
+
     debugResourceInfo() {
         if (typeof ResourceManager !== 'undefined') {
             return ResourceManager.debugInfo();
         }
         return null;
+    },
+
+    debugBuildingInfo() {
+        if (typeof BuildingManager !== 'undefined') {
+            BuildingManager.debugConstructions();
+        }
+        
+        if (typeof Buildings !== 'undefined') {
+            Buildings.debugBuildings();
+        }
+        
+        return this.getBuildingStats();
     },
 
     // Debug coordinate system
@@ -239,7 +362,9 @@ const GameEngine = {
                 planets: this.planets.map(p => ({
                     id: p.id,
                     pos: { x: p.x, y: p.y },
-                    radius: p.radius
+                    radius: p.radius,
+                    owner: p.owner,
+                    buildings: Object.keys(p.buildings || {}).length
                 }))
             });
         }
