@@ -1,4 +1,4 @@
-// AI Controller - CRITICAL FIX - Resource-aware AI for balanced economy
+// AI Controller - OPCIÓN A GALCON - Resource-aware AI optimized for 1 metal ship sending cost
 const AI = {
     lastDecision: 0,
     strategy: 'balanced',
@@ -7,14 +7,14 @@ const AI = {
     init() {
         this.lastDecision = Date.now();
         this.strategy = 'balanced';
-        console.log('🤖 AI initialized with resource awareness');
+        console.log('🤖 AI initialized - OPCIÓN A GALCON with 1 metal ship costs');
     },
 
     update() {
         const now = Date.now();
         
-        // BALANCED: Faster AI decisions for more dynamic gameplay
-        const decisionInterval = CONFIG.AI?.DECISION_INTERVAL || 2500;
+        // OPCIÓN A: Faster AI decisions for more dynamic gameplay
+        const decisionInterval = CONFIG.AI?.DECISION_INTERVAL || 2000;
         
         if (now - this.lastDecision >= decisionInterval) {
             this.makeDecision();
@@ -29,13 +29,13 @@ const AI = {
             return;
         }
 
-        // Analyze game state including resource situation
+        // Analyze game state including OPCIÓN A resource situation
         const gameState = this.analyzeGameState();
         
         // Update strategy based on resources
         this.updateStrategy(gameState);
         
-        // Find best action considering resource constraints
+        // Find best action considering OPCIÓN A resource constraints
         const action = this.selectBestAction(gameState);
         
         if (action) {
@@ -52,12 +52,12 @@ const AI = {
         const myTotalShips = myPlanets.reduce((sum, p) => sum + p.ships, 0);
         const playerTotalShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
         
-        // CRITICAL: Analyze AI resource situation
+        // OPCIÓN A: Analyze AI metal for sending ships (1 metal each)
         const myTotalMetal = myPlanets.reduce((sum, p) => sum + (p.aiMetal || 0), 0);
         const avgMetalPerPlanet = myTotalMetal / Math.max(myPlanets.length, 1);
         
-        // Calculate metal generation capacity
-        const metalGeneration = myPlanets.reduce((sum, p) => sum + (p.getAIMetalGeneration ? p.getAIMetalGeneration() : 0), 0);
+        // Calculate potential fleet size based on metal
+        const maxAffordableFleetSize = Math.floor(myTotalMetal);
         
         return {
             myPlanets,
@@ -67,22 +67,28 @@ const AI = {
             playerTotalShips,
             myTotalMetal,
             avgMetalPerPlanet,
-            metalGeneration,
+            maxAffordableFleetSize,
             shipRatio: myTotalShips / Math.max(playerTotalShips, 1),
             gamePhase: neutralPlanets.length > 2 ? 'expansion' : 'endgame',
-            resourceHealth: avgMetalPerPlanet > 20 ? 'good' : avgMetalPerPlanet > 10 ? 'medium' : 'poor'
+            resourceHealth: avgMetalPerPlanet > 50 ? 'excellent' : 
+                           avgMetalPerPlanet > 25 ? 'good' : 
+                           avgMetalPerPlanet > 10 ? 'medium' : 'poor'
         };
     },
 
     updateStrategy(gameState) {
-        // IMPROVED: Resource-aware strategy selection
+        // OPCIÓN A: Strategy based on metal availability and ship costs
         if (gameState.resourceHealth === 'poor') {
-            this.strategy = 'conservative'; // New strategy for low resources
-        } else if (gameState.shipRatio < 0.6) {
-            this.strategy = 'defensive';
+            this.strategy = 'conservative'; // Very small fleets only
         } else if (gameState.gamePhase === 'expansion' && gameState.neutralPlanets.length > 0) {
-            this.strategy = 'expansion';
-        } else if (gameState.shipRatio > 1.5 && gameState.resourceHealth === 'good') {
+            if (gameState.resourceHealth === 'excellent') {
+                this.strategy = 'aggressive_expansion'; // Target neutrals aggressively
+            } else {
+                this.strategy = 'expansion';
+            }
+        } else if (gameState.shipRatio < 0.7) {
+            this.strategy = 'defensive';
+        } else if (gameState.shipRatio > 1.5 && gameState.resourceHealth === 'excellent') {
             this.strategy = 'aggressive';
         } else {
             this.strategy = 'balanced';
@@ -94,11 +100,11 @@ const AI = {
         
         if (actions.length === 0) return null;
         
-        // CRITICAL: Filter actions by resource constraints
+        // OPCIÓN A: Filter actions by metal constraints (1 metal per ship)
         const affordableActions = actions.filter(action => this.canAffordAction(action, gameState));
         
         if (affordableActions.length === 0) {
-            // If no actions are affordable, try smaller forces
+            // If no actions are affordable, try very small fleets
             return this.generateConservativeAction(gameState);
         }
         
@@ -114,14 +120,13 @@ const AI = {
         return scoredActions[0];
     },
 
-    // CRITICAL: Check if AI can afford an action
+    // OPCIÓN A: Check if AI can afford an action (1 metal per ship)
     canAffordAction(action, gameState) {
-        // No direct cost for sending ships (they cost metal to CREATE, not SEND)
-        // But check if the source planet has enough ships
-        return action.source.ships >= action.ships + 1; // Keep 1 for defense
+        const metalCost = action.ships; // 1 metal per ship
+        return action.source.aiMetal >= metalCost;
     },
 
-    // NEW: Generate a conservative action when resources are low
+    // OPCIÓN A: Generate conservative action when resources are tight
     generateConservativeAction(gameState) {
         // Find the weakest neutral target
         const weakestNeutral = gameState.neutralPlanets
@@ -130,18 +135,20 @@ const AI = {
         
         if (!weakestNeutral) return null;
         
-        // Find closest AI planet with enough ships
+        // Find closest AI planet with enough metal for a small fleet
         const sourcePlanet = gameState.myPlanets
-            .filter(p => p.ships > weakestNeutral.ships + 1)
+            .filter(p => p.ships > weakestNeutral.ships + 1 && p.aiMetal >= weakestNeutral.ships + 2)
             .sort((a, b) => Utils.distance(a, weakestNeutral) - Utils.distance(b, weakestNeutral))[0];
         
         if (!sourcePlanet) return null;
+        
+        const fleetSize = Math.min(weakestNeutral.ships + 2, sourcePlanet.aiMetal);
         
         return {
             type: 'conservative_attack',
             source: sourcePlanet,
             target: weakestNeutral,
-            ships: weakestNeutral.ships + 1,
+            ships: fleetSize,
             distance: Utils.distance(sourcePlanet, weakestNeutral)
         };
     },
@@ -149,25 +156,33 @@ const AI = {
     generatePossibleActions(gameState) {
         const actions = [];
         
-        // IMPROVED: Prioritize targets based on strategy and resources
+        // OPCIÓN A: Target selection based on strategy and metal availability
         let targets = [];
         
         switch (this.strategy) {
             case 'conservative':
-                // Only attack weakest neutrals
-                targets = gameState.neutralPlanets.filter(p => p.ships <= 6);
+                // Only attack very weak neutrals
+                targets = gameState.neutralPlanets.filter(p => p.ships <= 4);
+                break;
+                
+            case 'aggressive_expansion':
+                // Target all neutrals first, then weak player planets
+                targets = [
+                    ...gameState.neutralPlanets,
+                    ...gameState.playerPlanets.filter(p => p.ships <= 10)
+                ];
                 break;
                 
             case 'expansion':
-                // Prioritize neutrals, then weak player planets
+                // Prioritize neutrals
                 targets = [
                     ...gameState.neutralPlanets,
-                    ...gameState.playerPlanets.filter(p => p.ships <= 8)
+                    ...gameState.playerPlanets.filter(p => p.ships <= 6)
                 ];
                 break;
                 
             case 'aggressive':
-                // Attack everything, prioritize player planets
+                // Attack everything
                 targets = [
                     ...gameState.playerPlanets,
                     ...gameState.neutralPlanets
@@ -178,24 +193,25 @@ const AI = {
                 // Balanced approach
                 targets = [
                     ...gameState.neutralPlanets,
-                    ...gameState.playerPlanets
+                    ...gameState.playerPlanets.filter(p => p.ships <= 8)
                 ];
         }
         
         gameState.myPlanets.forEach(source => {
-            if (source.ships <= 2) return; // Need more ships for conservative play
+            if (source.ships <= 2 || source.aiMetal < 3) return; // Need ships and metal
             
             targets.forEach(target => {
                 const distance = Utils.distance(source, target);
                 const shipsToSend = this.calculateShipsToSend(source, target, gameState);
                 
-                if (shipsToSend > 0) {
+                if (shipsToSend > 0 && source.aiMetal >= shipsToSend) {
                     actions.push({
                         type: 'attack',
                         source,
                         target,
                         ships: shipsToSend,
-                        distance
+                        distance,
+                        metalCost: shipsToSend
                     });
                 }
             });
@@ -204,81 +220,78 @@ const AI = {
         return actions;
     },
 
-    // IMPROVED: Better ship calculation considering resources
+    // OPCIÓN A: Better ship calculation considering 1 metal per ship cost
     calculateShipsToSend(source, target, gameState) {
         let needed;
         
         if (target.owner === 'neutral') {
-            // Against neutrals: just enough to win + buffer
+            // Against neutrals: enough to win + small buffer
             needed = target.ships + 2;
         } else {
             // Against player: more force needed
-            needed = Math.max(target.ships + 3, Math.ceil(target.ships * 1.3));
+            needed = Math.max(target.ships + 3, Math.ceil(target.ships * 1.4));
         }
         
-        const available = source.ships - 2; // Keep 2 for defense (was 1)
-        const affordable = Math.min(needed, available);
+        const available = source.ships - 2; // Keep 2 for defense
+        const affordable = Math.min(needed, available, source.aiMetal); // Limited by metal
         
-        // BALANCED: Scale down if resource health is poor
+        // OPCIÓN A: Scale based on resource health
         if (gameState.resourceHealth === 'poor') {
-            return Math.min(affordable, Math.floor(affordable * 0.7));
+            return Math.min(affordable, 3); // Very small fleets only
         } else if (gameState.resourceHealth === 'medium') {
-            return Math.min(affordable, Math.floor(affordable * 0.85));
+            return Math.min(affordable, Math.floor(affordable * 0.8));
         }
         
         return affordable;
     },
 
     scoreAction(action, gameState) {
-        const { target, distance, ships } = action;
+        const { target, distance, ships, metalCost } = action;
         let score = 0;
         
-        // Base value of target planet - IMPROVED
-        score += target.capacity * 12; // Increased base value
+        // Base value of target planet - IMPROVED for OPCIÓN A
+        score += target.capacity * 15; // Higher base value
         
-        // Resource value bonus
-        if (target.owner === 'neutral' && target.aiMetal) {
-            score += target.aiMetal * 0.5; // Bonus for metal on neutral planets
-        }
+        // OPCIÓN A: Metal efficiency bonus (value per metal spent)
+        const metalEfficiency = target.capacity / metalCost;
+        score += metalEfficiency * 10;
         
         // Distance penalty - REDUCED for more action
-        score -= distance * 0.05; // Was 0.1
+        score -= distance * 0.03;
         
-        // Strategy modifiers - IMPROVED
+        // Strategy modifiers - OPCIÓN A specific
         switch (this.strategy) {
             case 'conservative':
-                score += target.owner === 'neutral' && target.ships <= 5 ? 60 : -20;
+                score += target.owner === 'neutral' && target.ships <= 4 ? 80 : -30;
+                break;
+            case 'aggressive_expansion':
+                score += target.owner === 'neutral' ? 60 : 20;
+                score += target.capacity > 40 ? 25 : 0; // Bonus for large planets
                 break;
             case 'expansion':
-                score += target.owner === 'neutral' ? 45 : 15;
-                score += target.capacity > 25 ? 20 : 0; // Bonus for large planets
+                score += target.owner === 'neutral' ? 50 : 15;
                 break;
             case 'aggressive':
-                score += target.owner === 'player' ? 55 : 25;
-                score += target.ships > 10 ? 15 : 0; // Bonus for taking down strong targets
-                break;
-            case 'defensive':
-                // Prefer close targets and neutrals
-                score += target.owner === 'player' ? 25 : 35;
-                score -= distance * 0.1; // Extra distance penalty
+                score += target.owner === 'player' ? 60 : 30;
                 break;
             default:
-                score += target.owner === 'neutral' ? 35 : 25;
+                score += target.owner === 'neutral' ? 40 : 25;
         }
         
         // Success probability - IMPROVED
         let successChance;
         if (target.owner === 'neutral') {
-            successChance = ships > target.ships + 1 ? 0.95 : 0.7;
+            successChance = ships > target.ships + 1 ? 0.95 : 0.8;
         } else {
-            successChance = ships > target.ships + 2 ? 0.8 : ships > target.ships ? 0.6 : 0.3;
+            successChance = ships > target.ships + 2 ? 0.85 : ships > target.ships ? 0.7 : 0.4;
         }
         
         score *= successChance;
         
-        // Resource efficiency bonus
-        const efficiency = target.capacity / Math.max(ships, 1);
-        score += efficiency * 5;
+        // OPCIÓN A: Resource conservation bonus
+        if (gameState.resourceHealth === 'poor' && metalCost <= 5) {
+            score += 20; // Bonus for small, affordable actions
+        }
         
         return score;
     },
@@ -290,12 +303,18 @@ const AI = {
             return;
         }
         
-        // Create fleet - ships are FREE to send, only cost metal when created
-        FleetManager.createFleet(source, target, ships, 'ai');
-        
-        // Occasional logging for debugging
-        if (Math.random() < 0.1) {
-            console.log(`🤖 AI ${this.strategy}: ${ships} ships ${source.id} → ${target.id} (${target.owner})`);
+        // OPCIÓN A: Pay metal cost for sending (1 metal per ship)
+        const metalCost = ships;
+        if (source.aiMetal >= metalCost) {
+            source.aiMetal -= metalCost;
+            
+            // Create fleet
+            FleetManager.createFleet(source, target, ships, 'ai');
+            
+            // Occasional logging for debugging
+            if (Math.random() < 0.15) {
+                console.log(`🤖 AI ${this.strategy}: ${ships} ships ${source.id} → ${target.id} (${target.owner}) [Cost: ${metalCost} metal]`);
+            }
         }
     }
 };
