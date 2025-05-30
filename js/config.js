@@ -1,4 +1,4 @@
-// Game configuration - V1.4 with Building System
+// Game configuration - V1.4 with Building System - BALANCED
 const CONFIG = {
     // Game settings
     GAME: {
@@ -8,15 +8,29 @@ const CONFIG = {
         UPDATE_INTERVAL: 16,
     },
 
-    // Planet settings
+    // Planet settings - IMPROVED BALANCE
     PLANETS: {
         COUNT: 8,
-        MIN_CAPACITY: 8,
-        MAX_CAPACITY: 25,
+        MIN_CAPACITY: 15,  // Increased from 8
+        MAX_CAPACITY: 40,  // Increased from 25
         MIN_DISTANCE: 120,
-        PRODUCTION_BASE: 0.8,
-        PRODUCTION_MULTIPLIER: 0.15,
+        PRODUCTION_BASE: 0.5,      // Increased from 0.8 for faster ship production
+        PRODUCTION_MULTIPLIER: 0.2, // Increased from 0.15
         CONQUEST_TIME: 2000,
+        
+        // BALANCED RESOURCES - Better starting conditions
+        INITIAL_RESOURCES: {
+            metal: { min: 80, max: 150 },  // Much better starting metal
+            energy: { min: 40, max: 80 }
+        },
+        
+        // IMPROVED PRODUCTION - More sustainable
+        BASE_METAL_PRODUCTION: 0.4,  // 0.4 metal per second = 24/min
+        BASE_ENERGY_PRODUCTION: 0.1, // 0.1 energy per second = 6/min
+        MAX_RESOURCE_STORAGE: 250,   // Increased storage capacity
+        
+        // Better planet capacities for more action
+        CAPACITIES: [15, 18, 22, 25, 30, 35, 40, 45]  // 2x the original values
     },
 
     // Fleet settings
@@ -27,9 +41,9 @@ const CONFIG = {
 
     // AI settings
     AI: {
-        DECISION_INTERVAL: 3000,
-        AGGRESSION: 0.7,
-        MIN_ATTACK_FORCE: 3,
+        DECISION_INTERVAL: 2500,  // Slightly faster decisions
+        AGGRESSION: 0.8,          // More aggressive
+        MIN_ATTACK_FORCE: 2,      // Lower threshold
     },
 
     // Visual settings
@@ -49,23 +63,23 @@ const CONFIG = {
         UI_TEXT: '#ffffff',
     },
 
-    // Ship costs (Action 02 - Part B)
+    // CRITICAL FIX: Ship costs - MUCH CHEAPER
     SHIP_COST: {
-        metal: 10,
+        metal: 2,   // Reduced from 10 to 2 - much more affordable
         energy: 0
     },
 
-    // Resource system (Action 01 + Action 02 extensions)
+    // Resource system - BALANCED for gameplay
     RESOURCES: {
         METAL: {
-            generationBase: 1.0,
-            shipCost: 10,
-            storageMultiplier: 2.0
+            generationBase: 1.5,      // Increased from 1.0
+            shipCost: 2,              // Matches SHIP_COST
+            storageMultiplier: 3.0    // Increased from 2.0
         },
         ENERGY: {
-            generationBase: 1.0,  // 1 energy/min per planet
-            shipCost: 0,          // Ships don't cost energy
-            storageMultiplier: 0.5 // 0.5:1 ratio with capacity
+            generationBase: 1.0,      
+            shipCost: 0,          
+            storageMultiplier: 1.0    
         }
     },
 
