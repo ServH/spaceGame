@@ -1,4 +1,4 @@
-// Building UI - Action 02 DEBUG - Enhanced logging for right-click debugging
+// Building UI - Action 02 CRITICAL FIX - Fixed right-click coordinate detection
 const BuildingUI = {
     
     currentPlanet: null,
@@ -8,7 +8,7 @@ const BuildingUI = {
     init() {
         if (this.initialized) return;
         
-        console.log('🖥️ Initializing Building UI - DEBUG MODE...');
+        console.log('🖥️ Initializing Building UI - COORDINATE FIX...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -28,16 +28,26 @@ const BuildingUI = {
             return;
         }
 
-        console.log('🖥️ Setting up BuildingUI event listeners...');
+        console.log('🖥️ Setting up BuildingUI event listeners with FIXED coordinates...');
 
-        // Right-click to open building menu - ENHANCED DEBUG
+        // Right-click to open building menu - CRITICAL FIX
         canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault();
+            event.stopPropagation();
+            
             console.log('🖱️ CONTEXTMENU EVENT DETECTED!', {
                 clientX: event.clientX,
                 clientY: event.clientY,
-                target: event.target.tagName
+                target: event.target.tagName,
+                button: event.button
             });
+            
+            // FIXED: Only handle if we have real mouse coordinates
+            if (event.clientX === 0 && event.clientY === 0) {
+                console.log('⚠️ Invalid coordinates (0,0) detected - ignoring event');
+                return;
+            }
+            
             this.handleRightClick(event);
         });
 
@@ -49,40 +59,53 @@ const BuildingUI = {
             }
         });
         
-        console.log('✅ Building UI event listeners setup complete - DEBUG MODE');
+        console.log('✅ Building UI event listeners setup complete - COORDINATE FIX');
     },
 
-    // Handle right-click on canvas - ENHANCED DEBUG
+    // CRITICAL FIX: Handle right-click with proper coordinate detection
     handleRightClick(event) {
         console.log('🖱️ HandleRightClick called with event:', {
             clientX: event.clientX,
             clientY: event.clientY,
             button: event.button,
-            type: event.type
+            type: event.type,
+            timeStamp: event.timeStamp
         });
+        
+        // CRITICAL: Validate coordinates
+        if (event.clientX === 0 && event.clientY === 0) {
+            console.log('❌ Invalid coordinates detected - aborting');
+            return;
+        }
         
         const rect = event.target.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
-        // Convert screen coordinates to game coordinates
-        const gameX = (x / rect.width) * 800;
-        const gameY = (y / rect.height) * 600;
+        // FIXED: Use proper SVG coordinate transformation like InputManager
+        const svg = document.getElementById('gameCanvas');
+        const pt = svg.createSVGPoint();
+        pt.x = event.clientX;
+        pt.y = event.clientY;
         
-        console.log('🎯 Coordinate conversion:', {
-            screen: { x, y },
-            game: { x: gameX, y: gameY },
-            rect: { width: rect.width, height: rect.height }
+        const transformed = pt.matrixTransform(svg.getScreenCTM().inverse());
+        const gameX = transformed.x;
+        const gameY = transformed.y;
+        
+        console.log('🎯 Coordinate conversion FIXED:', {
+            screen: { x: event.clientX, y: event.clientY },
+            rect: { x, y, width: rect.width, height: rect.height },
+            game: { x: gameX, y: gameY }
         });
         
-        // Find clicked planet
+        // Find clicked planet using the SAME method as InputManager
         const planet = this.findPlanetAt(gameX, gameY);
         
         console.log('🪐 Planet search result:', {
             found: !!planet,
             planetId: planet ? planet.id : 'none',
             owner: planet ? planet.owner : 'none',
-            distance: planet ? Math.sqrt(Math.pow(planet.x - gameX, 2) + Math.pow(planet.y - gameY, 2)) : 'N/A'
+            ships: planet ? planet.ships : 'N/A'
         });
         
         if (planet && planet.owner === 'player') {
@@ -97,7 +120,7 @@ const BuildingUI = {
         }
     },
 
-    // Find planet at coordinates - ENHANCED DEBUG
+    // FIXED: Use SAME planet detection as InputManager
     findPlanetAt(x, y) {
         if (!GameEngine || !GameEngine.planets) {
             console.warn('❌ No GameEngine or planets available');
@@ -110,8 +133,12 @@ const BuildingUI = {
         let closestDistance = Infinity;
         
         GameEngine.planets.forEach((planet, index) => {
-            const distance = Math.sqrt(Math.pow(planet.x - x, 2) + Math.pow(planet.y - y, 2));
-            const tolerance = planet.radius + 20; // Increased tolerance for easier clicking
+            const dx = planet.x - x;
+            const dy = planet.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // SAME tolerance as InputManager for consistency
+            const tolerance = Math.max(planet.radius + 15, 30);
             
             console.log(`Planet ${index} (${planet.id}):`, {
                 position: { x: planet.x, y: planet.y },
@@ -138,7 +165,7 @@ const BuildingUI = {
         return closestPlanet;
     },
 
-    // Show building menu - ENHANCED DEBUG
+    // Show building menu
     showBuildingMenu(planet, screenX, screenY) {
         console.log('🏗️ Creating building menu for planet', planet.id, 'at screen position', screenX, screenY);
         
