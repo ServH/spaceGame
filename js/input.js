@@ -1,4 +1,4 @@
-// Input Manager - ENHANCED with full UI integration and resource feedback
+// Input Manager - FIXED for drag & drop and tooltips
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -10,24 +10,59 @@ const InputManager = {
         lastKeyTime: 0
     },
     lastHoveredPlanet: null,
+    initialized: false,
 
     init() {
+        if (this.initialized) return;
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEvents());
+        } else {
+            this.setupEvents();
+        }
+    },
+
+    setupEvents() {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
+        this.initialized = true;
         console.log('🎮 Input Manager initialized with Evolution features');
     },
 
     setupMouseEvents() {
         const canvas = document.getElementById('gameCanvas');
         
-        canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e), false);
-        canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e), false);
-        canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e), false);
-        canvas.addEventListener('mouseleave', () => this.handleMouseLeave(), false);
+        if (!canvas) {
+            console.error('❌ Canvas not found for InputManager');
+            return;
+        }
+        
+        console.log('🖱️ Setting up mouse events on canvas:', canvas);
+        
+        canvas.addEventListener('mousedown', (e) => {
+            console.log('🖱️ Mouse down at:', e.clientX, e.clientY);
+            this.handleMouseDown(e);
+        }, false);
+        
+        canvas.addEventListener('mousemove', (e) => {
+            this.handleMouseMove(e);
+        }, false);
+        
+        canvas.addEventListener('mouseup', (e) => {
+            this.handleMouseUp(e);
+        }, false);
+        
+        canvas.addEventListener('mouseleave', () => {
+            this.handleMouseLeave();
+        }, false);
+        
+        console.log('✅ Mouse events setup complete');
     },
 
     setupKeyboardEvents() {
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        console.log('⌨️ Keyboard events setup complete');
     },
 
     handleMouseDown(e) {
@@ -35,9 +70,13 @@ const InputManager = {
         if (UI && UI.hideTooltip) UI.hideTooltip();
         
         const pos = this.getCanvasPosition(e);
-        const planet = GameEngine.getPlanetAt(pos.x, pos.y);
+        console.log('🖱️ Mouse down position:', pos);
+        
+        const planet = this.getPlanetAt(pos.x, pos.y);
+        console.log('🪐 Planet found:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}, Ships: ${planet.ships}` : 'None');
         
         if (planet && planet.owner === 'player' && planet.ships > 0) {
+            console.log('🚀 Starting drag from planet', planet.id);
             this.startDrag(planet, pos);
         }
     },
@@ -52,6 +91,7 @@ const InputManager = {
 
     handleMouseUp(e) {
         if (this.dragState.isDragging) {
+            console.log('🖱️ Mouse up - ending drag');
             this.endDrag(e);
         }
     },
@@ -65,7 +105,7 @@ const InputManager = {
 
     handleHover(e) {
         const pos = this.getCanvasPosition(e);
-        const planet = GameEngine.getPlanetAt(pos.x, pos.y);
+        const planet = this.getPlanetAt(pos.x, pos.y);
         
         if (planet !== this.lastHoveredPlanet) {
             if (this.lastHoveredPlanet) {
@@ -95,13 +135,32 @@ const InputManager = {
         const canvas = document.getElementById('gameCanvas');
         const rect = canvas.getBoundingClientRect();
         
-        return {
+        const pos = {
             x: (e.clientX - rect.left) * (800 / rect.width),
             y: (e.clientY - rect.top) * (600 / rect.height)
         };
+        
+        return pos;
+    },
+
+    // Helper method to find planet at position
+    getPlanetAt(x, y) {
+        if (!GameEngine || !GameEngine.planets) {
+            console.log('⚠️ GameEngine or planets not available');
+            return null;
+        }
+        
+        for (let planet of GameEngine.planets) {
+            const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
+            if (distance <= planet.radius) {
+                return planet;
+            }
+        }
+        return null;
     },
 
     startDrag(planet, pos) {
+        console.log('🚀 Starting drag from planet', planet.id);
         this.dragState.isDragging = true;
         this.dragState.startPlanet = planet;
         
@@ -117,6 +176,8 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('opacity', '0.8');
         this.dragState.dragLine.style.pointerEvents = 'none';
         svg.appendChild(this.dragState.dragLine);
+        
+        console.log('✅ Drag line created');
     },
 
     updateDrag(e) {
@@ -129,9 +190,12 @@ const InputManager = {
 
     endDrag(e) {
         const pos = this.getCanvasPosition(e);
-        const targetPlanet = GameEngine.getPlanetAt(pos.x, pos.y);
+        const targetPlanet = this.getPlanetAt(pos.x, pos.y);
+        
+        console.log('🎯 Drag ended at planet:', targetPlanet ? targetPlanet.id : 'None');
         
         if (targetPlanet && targetPlanet !== this.dragState.startPlanet) {
+            console.log('🚀 Executing fleet command');
             this.executeFleetCommand(this.dragState.startPlanet, targetPlanet);
         }
         
@@ -146,12 +210,13 @@ const InputManager = {
         
         this.dragState.isDragging = false;
         this.dragState.startPlanet = null;
+        console.log('🚫 Drag cancelled');
     },
 
     handleKeyDown(e) {
         const key = e.key.toLowerCase();
         
-        if (CONFIG.KEYBOARD.assignments[key] !== undefined) {
+        if (CONFIG.KEYBOARD && CONFIG.KEYBOARD.assignments && CONFIG.KEYBOARD.assignments[key] !== undefined) {
             e.preventDefault();
             this.handlePlanetKey(key);
         }
@@ -159,7 +224,7 @@ const InputManager = {
 
     handlePlanetKey(key) {
         const planetId = CONFIG.KEYBOARD.assignments[key];
-        const planet = GameEngine.getPlanetById(planetId);
+        const planet = this.getPlanetById(planetId);
         
         if (!planet) return;
         
@@ -180,6 +245,11 @@ const InputManager = {
             }
             this.clearPlanetSelection();
         }
+    },
+
+    getPlanetById(id) {
+        if (!GameEngine || !GameEngine.planets) return null;
+        return GameEngine.planets.find(p => p.id === id);
     },
 
     showPlanetSelection(planet) {
@@ -215,6 +285,8 @@ const InputManager = {
         if (origin.owner !== 'player') return;
         
         const shipsToSend = Math.floor(origin.ships * 0.5);
+        
+        console.log(`🚀 Executing fleet command: ${shipsToSend} ships from ${origin.id} to ${destination.id}`);
         
         if (shipsToSend >= 1) {
             // Check if fleet can be created (including resource costs)
@@ -299,6 +371,10 @@ const InputManager = {
             const ownerName = planet.owner === 'player' ? 'Jugador' : 
                              planet.owner === 'ai' ? 'IA' : 'Neutral';
             info = `<strong>${ownerName}</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
+            
+            if (planet.assignedKey) {
+                info = `<strong>${ownerName} [${planet.assignedKey.toUpperCase()}]</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
+            }
         }
         
         // Add resource cost information for player planets
