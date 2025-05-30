@@ -1,4 +1,4 @@
-// Fleet class - Enhanced with V1.2 trail animations + Evolution Resource Integration
+// Fleet class - Enhanced with V1.2 trail animations + CRITICAL FIX - Ships are FREE to send
 class Fleet {
     constructor(origin, destination, ships, owner) {
         this.id = Date.now() + Math.random();
@@ -112,36 +112,16 @@ class Fleet {
     }
 }
 
-// Fleet manager - Enhanced for V1.2 + Evolution Resource Integration
+// Fleet manager - CRITICAL FIX - Ships are FREE to send, only cost metal when CREATED
 const FleetManager = {
     fleets: [],
 
-    // Evolution: Enhanced createFleet with resource checking
+    // CRITICAL FIX: Ships are FREE to send - no resource cost for sending
     createFleet(origin, destination, ships, owner) {
-        // Evolution: Check resources for player ships
-        if (owner === 'player' && typeof ResourceManager !== 'undefined') {
-            // Check if player can afford the ships
-            if (!ResourceManager.canAffordShip(ships)) {
-                console.log(`🚫 Cannot create fleet: insufficient resources (need ${ships} metal, have ${ResourceManager.getMetal()})`);
-                
-                // Show insufficient resources feedback
-                if (typeof ResourceUI !== 'undefined') {
-                    ResourceUI.showInsufficientResources();
-                }
-                
-                return null;
-            }
-            
-            // Pay for the ships
-            if (!ResourceManager.payForShips(ships)) {
-                console.log(`🚫 Failed to pay for ships`);
-                return null;
-            }
-            
-            console.log(`💰 Paid ${ships} metal for fleet, remaining: ${ResourceManager.getMetal()}`);
-        }
-
-        // Original ship availability check
+        // FIXED: No resource cost for SENDING ships
+        // Ships only cost metal when CREATED by planets, not when SENT
+        
+        // Only check if planet has enough ships to send
         if (origin.canSendShips(ships)) {
             origin.sendShips(ships);
             const fleet = new Fleet(origin, destination, ships, owner);
@@ -150,44 +130,29 @@ const FleetManager = {
             console.log(`🚀 Created fleet: ${ships} ships from ${origin.id} to ${destination.id} (${owner})`);
             return fleet;
         } else {
-            // Evolution: Refund resources if ship sending fails
-            if (owner === 'player' && typeof ResourceManager !== 'undefined') {
-                ResourceManager.addMetal(ships);
-                console.log(`💰 Refunded ${ships} metal due to send failure`);
-            }
+            console.log(`🚫 Cannot send fleet: insufficient ships on planet ${origin.id}`);
+            return null;
         }
-        
-        return null;
     },
 
-    // Evolution: Enhanced ship cost validation
+    // FIXED: Simplified validation - only check ship availability
     canCreateFleet(origin, destination, ships, owner) {
-        // Check basic ship availability
+        // Only check if planet has enough ships to send
         if (!origin.canSendShips(ships)) {
-            return { canCreate: false, reason: 'insufficient_ships' };
-        }
-        
-        // Evolution: Check resources for player
-        if (owner === 'player' && typeof ResourceManager !== 'undefined') {
-            if (!ResourceManager.canAffordShip(ships)) {
-                return { 
-                    canCreate: false, 
-                    reason: 'insufficient_resources',
-                    need: ships,
-                    have: ResourceManager.getMetal()
-                };
-            }
+            return { 
+                canCreate: false, 
+                reason: 'insufficient_ships',
+                have: origin.ships,
+                need: ships
+            };
         }
         
         return { canCreate: true };
     },
 
-    // Evolution: Get ship cost for UI display
+    // REMOVED: No ship cost for sending (only for creating)
     getShipCost(ships = 1) {
-        if (typeof ResourceManager !== 'undefined') {
-            return ResourceManager.config.metal.shipCost * ships;
-        }
-        return 0; // No cost if resource system not available
+        return 0; // FREE to send ships
     },
 
     update() {
@@ -199,12 +164,12 @@ const FleetManager = {
         this.fleets = [];
     },
 
-    // Evolution: Get fleet count for specific owner
+    // Get fleet count for specific owner
     getFleetCount(owner) {
         return this.fleets.filter(fleet => fleet.owner === owner).length;
     },
 
-    // Evolution: Get total ships in transit for owner
+    // Get total ships in transit for owner
     getShipsInTransit(owner) {
         return this.fleets
             .filter(fleet => fleet.owner === owner)
