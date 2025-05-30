@@ -1,6 +1,4 @@
-// Resource Manager - Action 02 BALANCED - Fixed initial resources and balance
-// Manages metal and energy resource generation, storage, and consumption
-
+// Resource Manager - Action 02 CLEAN - Reduced logging and better balance
 const ResourceManager = {
     // Resource tracking
     resources: {
@@ -15,31 +13,29 @@ const ResourceManager = {
     // Configuration
     config: {
         metal: {
-            // Base generation rates by planet capacity - BALANCED for gameplay
+            // BALANCED generation rates
             generationRates: {
-                small: 6.0,   // 1-10 capacity - Increased for better balance
-                medium: 9.0,  // 11-20 capacity
-                large: 12.0   // 21+ capacity
+                small: 8.0,   // 1-10 capacity - Better balance
+                medium: 12.0, // 11-20 capacity
+                large: 16.0   // 21+ capacity
             },
-            storageMultiplier: 2.0, // 2:1 ratio with planet capacity
+            storageMultiplier: 3.0, // More storage capacity
             shipCost: 10 // Action 02: Ships cost 10 metal
         },
         energy: {
             // Basic energy generation - 1 energy/min per planet
             generationBase: 1.0,
-            storageMultiplier: 0.5, // 0.5:1 ratio with planet capacity
+            storageMultiplier: 1.0, // More energy storage
             shipCost: 0 // Ships don't cost energy
         }
     },
 
-    // Initialize resource system with BALANCED starting resources
+    // Initialize resource system with GOOD starting resources
     init() {
-        this.resources.metal = 100; // INCREASED: More starting metal for balanced gameplay
-        this.resources.energy = 50; // INCREASED: More starting energy
+        this.resources.metal = 150; // MORE starting metal
+        this.resources.energy = 75;  // MORE starting energy
         this.lastUpdate = Date.now();
-        console.log('💎 Resource Manager initialized - BALANCED START');
-        console.log('💰 Starting resources - Metal:', this.resources.metal, 'Energy:', this.resources.energy);
-        console.log('🏗️ Ship cost: 10 Metal (Action 02)');
+        console.log('💎 Resource Manager initialized - CLEAN & BALANCED');
     },
 
     // Main update loop
@@ -121,7 +117,7 @@ const ResourceManager = {
 
     // Storage capacity methods
     getTotalMetalStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 200;
+        if (!GameEngine || !GameEngine.planets) return 300;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
@@ -129,7 +125,7 @@ const ResourceManager = {
     },
 
     getTotalEnergyStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 100;
+        if (!GameEngine || !GameEngine.planets) return 150;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
@@ -189,7 +185,7 @@ const ResourceManager = {
         return this.getEnergy();
     },
 
-    // Ship cost methods (Action 02)
+    // Ship cost methods (Action 02) - REDUCED LOGGING
     canAffordShip(shipCount = 1) {
         const totalCost = this.config.metal.shipCost * shipCount;
         return this.resources.metal >= totalCost;
@@ -199,11 +195,12 @@ const ResourceManager = {
         const totalCost = this.config.metal.shipCost * shipCount;
         if (this.canAffordShip(shipCount)) {
             this.spendMetal(totalCost);
-            console.log(`💰 Paid ${totalCost} metal for ${shipCount} ship(s) - Remaining: ${this.getMetal()}`);
+            // REDUCED LOGGING: Only occasionally
+            if (Math.random() < 0.05) {
+                console.log(`💰 Paid ${totalCost} metal for ${shipCount} ship(s)`);
+            }
             return true;
         }
-        
-        console.log(`❌ Not enough metal for ${shipCount} ship(s). Need: ${totalCost}, Have: ${this.getMetal()}`);
         return false;
     },
 
@@ -216,49 +213,19 @@ const ResourceManager = {
         return this.resources.metal >= amount;
     },
 
-    // Update UI elements
+    // Update UI elements - CLEAN implementation
     updateUI() {
-        // Update main displays at top
         this.updateMainDisplays();
         
-        // Update compact displays if they exist
-        const metalCompact = document.getElementById('metalCompact');
-        if (metalCompact) {
-            metalCompact.textContent = `🔩 ${this.getMetal()}`;
-        }
-
-        const energyCompact = document.getElementById('energyCompact');
-        if (energyCompact) {
-            energyCompact.textContent = `⚡ ${this.getEnergy()}`;
-        }
-
         // Update ResourceUI if available
         if (typeof ResourceUI !== 'undefined' && ResourceUI.update) {
             ResourceUI.update();
         }
     },
 
-    // Update main resource displays in header
+    // Update main resource displays in header - CLEAN
     updateMainDisplays() {
-        // Find or create main resource display
-        let resourceDisplay = document.getElementById('mainResourceDisplay');
-        if (!resourceDisplay) {
-            // Create main resource display in UI top area
-            const uiTop = document.querySelector('.ui-top');
-            if (uiTop) {
-                resourceDisplay = document.createElement('div');
-                resourceDisplay.id = 'mainResourceDisplay';
-                resourceDisplay.style.cssText = `
-                    color: #00ff88;
-                    font-family: 'Courier New', monospace;
-                    font-size: 14px;
-                    font-weight: bold;
-                    text-align: center;
-                    margin: 5px 0;
-                `;
-                uiTop.appendChild(resourceDisplay);
-            }
-        }
+        const resourceDisplay = document.getElementById('mainResourceDisplay');
         
         if (resourceDisplay) {
             const metalRate = this.getTotalMetalGeneration();
@@ -278,14 +245,7 @@ const ResourceManager = {
         return GameEngine.planets
             .filter(p => p.owner === 'player')
             .reduce((total, planet) => {
-                const storage = this.resources.metal;
-                const maxStorage = this.getTotalMetalStorageCapacity();
-                
-                // Only count generation if not at capacity
-                if (storage < maxStorage) {
-                    return total + this.getPlanetMetalGeneration(planet);
-                }
-                return total;
+                return total + this.getPlanetMetalGeneration(planet);
             }, 0);
     },
 
@@ -295,14 +255,7 @@ const ResourceManager = {
         return GameEngine.planets
             .filter(p => p.owner === 'player')
             .reduce((total, planet) => {
-                const storage = this.resources.energy;
-                const maxStorage = this.getTotalEnergyStorageCapacity();
-                
-                // Only count generation if not at capacity
-                if (storage < maxStorage) {
-                    return total + this.getPlanetEnergyGeneration(planet);
-                }
-                return total;
+                return total + this.getPlanetEnergyGeneration(planet);
             }, 0);
     },
 
@@ -325,11 +278,11 @@ const ResourceManager = {
 
     // Reset resource system
     reset() {
-        this.resources.metal = 100; // BALANCED starting resources
-        this.resources.energy = 50;
+        this.resources.metal = 150;
+        this.resources.energy = 75;
         this.lastUpdate = Date.now();
         this.updateUI();
-        console.log('💎 Resource Manager reset - BALANCED MODE');
+        console.log('💎 Resource Manager reset - CLEAN MODE');
     },
 
     // Debug methods
