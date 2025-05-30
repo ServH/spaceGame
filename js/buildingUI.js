@@ -1,4 +1,4 @@
-// Building UI - Action 02 CRITICAL FIX - Fixed right-click coordinate detection
+// Building UI - OPCIÓN A - FIXED right-click detection using mousedown approach
 const BuildingUI = {
     
     currentPlanet: null,
@@ -8,7 +8,7 @@ const BuildingUI = {
     init() {
         if (this.initialized) return;
         
-        console.log('🖥️ Initializing Building UI - COORDINATE FIX...');
+        console.log('🖥️ Initializing Building UI - MOUSEDOWN FIX...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -20,7 +20,7 @@ const BuildingUI = {
         this.initialized = true;
     },
 
-    // Setup event listeners for building UI
+    // FIXED: Setup event listeners using mousedown instead of contextmenu
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) {
@@ -28,27 +28,29 @@ const BuildingUI = {
             return;
         }
 
-        console.log('🖥️ Setting up BuildingUI event listeners with FIXED coordinates...');
+        console.log('🖥️ Setting up BuildingUI event listeners with MOUSEDOWN fix...');
 
-        // Right-click to open building menu - CRITICAL FIX
+        // FIXED: Use mousedown with button detection instead of contextmenu
+        canvas.addEventListener('mousedown', (event) => {
+            // Check if it's right-click (button 2)
+            if (event.button === 2) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                console.log('🖱️ RIGHT MOUSEDOWN DETECTED!', {
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    button: event.button,
+                    target: event.target.tagName
+                });
+                
+                this.handleRightClick(event);
+            }
+        });
+
+        // Still prevent context menu from appearing
         canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault();
-            event.stopPropagation();
-            
-            console.log('🖱️ CONTEXTMENU EVENT DETECTED!', {
-                clientX: event.clientX,
-                clientY: event.clientY,
-                target: event.target.tagName,
-                button: event.button
-            });
-            
-            // FIXED: Only handle if we have real mouse coordinates
-            if (event.clientX === 0 && event.clientY === 0) {
-                console.log('⚠️ Invalid coordinates (0,0) detected - ignoring event');
-                return;
-            }
-            
-            this.handleRightClick(event);
         });
 
         // Click to close building menu
@@ -59,10 +61,10 @@ const BuildingUI = {
             }
         });
         
-        console.log('✅ Building UI event listeners setup complete - COORDINATE FIX');
+        console.log('✅ Building UI event listeners setup complete - MOUSEDOWN FIX');
     },
 
-    // CRITICAL FIX: Handle right-click with proper coordinate detection
+    // FIXED: Handle right-click with proper coordinate detection
     handleRightClick(event) {
         console.log('🖱️ HandleRightClick called with event:', {
             clientX: event.clientX,
@@ -72,17 +74,7 @@ const BuildingUI = {
             timeStamp: event.timeStamp
         });
         
-        // CRITICAL: Validate coordinates
-        if (event.clientX === 0 && event.clientY === 0) {
-            console.log('❌ Invalid coordinates detected - aborting');
-            return;
-        }
-        
-        const rect = event.target.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
-        // FIXED: Use proper SVG coordinate transformation like InputManager
+        // Use proper SVG coordinate transformation
         const svg = document.getElementById('gameCanvas');
         const pt = svg.createSVGPoint();
         pt.x = event.clientX;
@@ -92,10 +84,9 @@ const BuildingUI = {
         const gameX = transformed.x;
         const gameY = transformed.y;
         
-        console.log('🎯 Coordinate conversion FIXED:', {
+        console.log('🎯 Coordinate conversion:', {
             screen: { x: event.clientX, y: event.clientY },
-            rect: { x, y, width: rect.width, height: rect.height },
-            game: { x: gameX, y: gameY }
+            game: { x: gameX.toFixed(1), y: gameY.toFixed(1) }
         });
         
         // Find clicked planet using the SAME method as InputManager
@@ -120,7 +111,7 @@ const BuildingUI = {
         }
     },
 
-    // FIXED: Use SAME planet detection as InputManager
+    // Use SAME planet detection as InputManager
     findPlanetAt(x, y) {
         if (!GameEngine || !GameEngine.planets) {
             console.warn('❌ No GameEngine or planets available');
@@ -140,19 +131,10 @@ const BuildingUI = {
             // SAME tolerance as InputManager for consistency
             const tolerance = Math.max(planet.radius + 15, 30);
             
-            console.log(`Planet ${index} (${planet.id}):`, {
-                position: { x: planet.x, y: planet.y },
-                radius: planet.radius,
-                distance: distance.toFixed(1),
-                tolerance: tolerance,
-                withinRange: distance <= tolerance,
-                owner: planet.owner
-            });
-            
             if (distance <= tolerance && distance < closestDistance) {
                 closestDistance = distance;
                 closestPlanet = planet;
-                console.log(`🎯 New closest planet: ${planet.id} at distance ${distance.toFixed(1)}`);
+                console.log(`🎯 Found planet: ${planet.id} at distance ${distance.toFixed(1)}`);
             }
         });
         
@@ -227,7 +209,7 @@ const BuildingUI = {
         header.textContent = `PLANETA ${planet.id.toUpperCase()} - CONSTRUCCIÓN`;
         menu.appendChild(header);
 
-        // Planet info
+        // Planet info - OPCIÓN A specific
         const info = document.createElement('div');
         info.style.marginBottom = '15px';
         info.style.fontSize = '11px';
@@ -237,7 +219,7 @@ const BuildingUI = {
         const constructing = BuildingManager ? BuildingManager.getConstructionQueue(planet) : [];
         
         info.innerHTML = `
-            Naves: ${planet.ships}/${planet.capacity}<br>
+            Naves: ${planet.ships}/${planet.capacity} (Regeneración: GRATIS)<br>
             Edificios: ${completedBuildings.length}/3<br>
             Construyendo: ${constructing.length}
         `;
@@ -257,7 +239,8 @@ const BuildingUI = {
         const energy = ResourceManager ? ResourceManager.getEnergy() : 0;
         
         resourceInfo.innerHTML = `
-            🔩 Metal: ${metal} | ⚡ Energy: ${energy}
+            🔩 Metal: ${metal} | ⚡ Energy: ${energy}<br>
+            <small style="color: #ffa500">Envío de flotas: 1 metal/nave</small>
         `;
         menu.appendChild(resourceInfo);
 
