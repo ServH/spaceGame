@@ -1,4 +1,4 @@
-// Game configuration - V1.3 with defaults
+// Game configuration - V1.4 with Building System
 const CONFIG = {
     // Game settings
     GAME: {
@@ -47,6 +47,40 @@ const CONFIG = {
         NEUTRAL: '#888888',
         BACKGROUND: '#0a0a1a',
         UI_TEXT: '#ffffff',
+    },
+
+    // Ship costs (Action 02 - Part B)
+    SHIP_COST: {
+        metal: 10,
+        energy: 0
+    },
+
+    // Resource system (Action 01 + Action 02 extensions)
+    RESOURCES: {
+        METAL: {
+            generationBase: 1.0,
+            shipCost: 10,
+            storageMultiplier: 2.0
+        },
+        ENERGY: {
+            generationBase: 1.0,  // 1 energy/min per planet
+            shipCost: 0,          // Ships don't cost energy
+            storageMultiplier: 0.5 // 0.5:1 ratio with capacity
+        }
+    },
+
+    // Building system (Action 02)
+    BUILDINGS: {
+        MAX_PER_PLANET: 3,
+        CONSTRUCTION_UPDATE_INTERVAL: 100, // ms
+        REFUND_PERCENTAGE: 0.5, // 50% refund on cancellation
+        
+        // Building slot visual positions around planet
+        SLOT_POSITIONS: [
+            { angle: 0, distance: 45 },     // Right
+            { angle: 120, distance: 45 },   // Bottom-left  
+            { angle: 240, distance: 45 }    // Top-left
+        ]
     },
 
     // Keyboard assignments
