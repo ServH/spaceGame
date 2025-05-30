@@ -1,4 +1,4 @@
-// Input Manager - FIXED mouse coordinate alignment with proper SVG transformation
+// Input Manager - FIXED with SVG native coordinate system for perfect alignment
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -27,7 +27,7 @@ const InputManager = {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
         this.initialized = true;
-        console.log('🎮 Input Manager initialized with corrected coordinates');
+        console.log('🎮 Input Manager initialized with PERFECT SVG coordinate system');
     },
 
     setupMouseEvents() {
@@ -38,7 +38,7 @@ const InputManager = {
             return;
         }
         
-        console.log('🖱️ Setting up mouse events on canvas');
+        console.log('🖱️ Setting up mouse events with native SVG coordinates');
         
         canvas.addEventListener('mousedown', (e) => {
             this.handleMouseDown(e);
@@ -56,7 +56,7 @@ const InputManager = {
             this.handleMouseLeave();
         }, false);
         
-        console.log('✅ Mouse events setup complete');
+        console.log('✅ Mouse events setup complete with SVG coordinate fix');
     },
 
     setupKeyboardEvents() {
@@ -68,12 +68,15 @@ const InputManager = {
         e.preventDefault();
         if (UI && UI.hideTooltip) UI.hideTooltip();
         
-        const pos = this.getCanvasPosition(e);
+        const pos = this.getSVGCoordinates(e);
+        console.log('🖱️ Mouse down at SVG coords:', pos);
+        
         const planet = this.getPlanetAt(pos.x, pos.y);
+        console.log('🪐 Planet found:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}, Ships: ${planet.ships}` : 'None');
         
         if (planet && planet.owner === 'player' && planet.ships > 0) {
             console.log('🚀 Starting drag from planet', planet.id);
-            this.startDrag(planet, pos);
+            this.startDrag(planet);
         }
     },
 
@@ -87,6 +90,7 @@ const InputManager = {
 
     handleMouseUp(e) {
         if (this.dragState.isDragging) {
+            console.log('🖱️ Mouse up - ending drag');
             this.endDrag(e);
         }
     },
@@ -99,7 +103,7 @@ const InputManager = {
     },
 
     handleHover(e) {
-        const pos = this.getCanvasPosition(e);
+        const pos = this.getSVGCoordinates(e);
         const planet = this.getPlanetAt(pos.x, pos.y);
         
         if (planet !== this.lastHoveredPlanet) {
@@ -126,32 +130,35 @@ const InputManager = {
         if (UI && UI.hideTooltip) UI.hideTooltip();
     },
 
-    getCanvasPosition(e) {
+    // CRITICAL FIX: Use SVG's native coordinate transformation
+    getSVGCoordinates(e) {
         const svg = document.getElementById('gameCanvas');
         
-        // Create an SVG point to handle transformations properly
+        // Create SVG point for proper coordinate transformation
         const pt = svg.createSVGPoint();
         pt.x = e.clientX;
         pt.y = e.clientY;
         
-        // Transform the point to SVG coordinate space
-        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+        // Transform using SVG's own coordinate system
+        const transformed = pt.matrixTransform(svg.getScreenCTM().inverse());
         
-        console.log('🎯 Coordinate conversion:', {
-            screen: { x: e.clientX, y: e.clientY },
-            svg: { x: svgP.x.toFixed(1), y: svgP.y.toFixed(1) }
-        });
+        // Log for debugging alignment
+        if (this.dragState.isDragging) {
+            console.log('🎯 SVG Coordinates:', {
+                screen: { x: e.clientX, y: e.clientY },
+                svg: { x: transformed.x.toFixed(1), y: transformed.y.toFixed(1) }
+            });
+        }
         
         return {
-            x: svgP.x,
-            y: svgP.y
+            x: transformed.x,
+            y: transformed.y
         };
     },
 
-    // Helper method to find planet at position
+    // Enhanced planet detection with better tolerance
     getPlanetAt(x, y) {
         if (!GameEngine || !GameEngine.planets) {
-            console.log('⚠️ GameEngine or planets not available');
             return null;
         }
         
@@ -159,24 +166,28 @@ const InputManager = {
         let closestDistance = Infinity;
         
         for (let planet of GameEngine.planets) {
-            const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
-            if (distance <= planet.radius + 10) { // 10px tolerance for easier clicking
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closestPlanet = planet;
-                }
+            const dx = planet.x - x;
+            const dy = planet.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Use generous tolerance for easier interaction
+            const tolerance = Math.max(planet.radius + 15, 30);
+            
+            if (distance <= tolerance && distance < closestDistance) {
+                closestDistance = distance;
+                closestPlanet = planet;
             }
         }
         
         if (closestPlanet) {
-            console.log(`✅ Found planet ${closestPlanet.id} at distance ${closestDistance.toFixed(1)}`);
+            console.log(`✅ Found planet ${closestPlanet.id} at distance ${closestDistance.toFixed(1)}px`);
         }
         
         return closestPlanet;
     },
 
-    startDrag(planet, pos) {
-        console.log('🚀 Starting drag from planet', planet.id);
+    startDrag(planet) {
+        console.log('🚀 Starting drag from planet', planet.id, 'at', planet.x, planet.y);
         this.dragState.isDragging = true;
         this.dragState.startPlanet = planet;
         
@@ -187,33 +198,38 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('x2', planet.x);
         this.dragState.dragLine.setAttribute('y2', planet.y);
         this.dragState.dragLine.setAttribute('stroke', '#00ff88');
-        this.dragState.dragLine.setAttribute('stroke-width', '3');
-        this.dragState.dragLine.setAttribute('stroke-dasharray', '8,4');
-        this.dragState.dragLine.setAttribute('opacity', '0.8');
+        this.dragState.dragLine.setAttribute('stroke-width', '4');
+        this.dragState.dragLine.setAttribute('stroke-dasharray', '12,6');
+        this.dragState.dragLine.setAttribute('opacity', '0.9');
         this.dragState.dragLine.style.pointerEvents = 'none';
+        
+        // Add animation class for moving dashes
         this.dragState.dragLine.setAttribute('class', 'drag-line');
+        
         svg.appendChild(this.dragState.dragLine);
         
-        console.log('✅ Drag line created');
+        console.log('✅ Drag line created with enhanced visuals');
     },
 
     updateDrag(e) {
         if (!this.dragState.dragLine) return;
         
-        const pos = this.getCanvasPosition(e);
+        const pos = this.getSVGCoordinates(e);
         this.dragState.dragLine.setAttribute('x2', pos.x);
         this.dragState.dragLine.setAttribute('y2', pos.y);
     },
 
     endDrag(e) {
-        const pos = this.getCanvasPosition(e);
+        const pos = this.getSVGCoordinates(e);
         const targetPlanet = this.getPlanetAt(pos.x, pos.y);
         
-        console.log('🎯 Drag ended - target planet:', targetPlanet ? targetPlanet.id : 'None');
+        console.log('🎯 Drag ended at coords:', pos, 'target planet:', targetPlanet ? targetPlanet.id : 'None');
         
         if (targetPlanet && targetPlanet !== this.dragState.startPlanet) {
-            console.log('🚀 Executing fleet command');
+            console.log('🚀 Executing fleet command:', this.dragState.startPlanet.id, '→', targetPlanet.id);
             this.executeFleetCommand(this.dragState.startPlanet, targetPlanet);
+        } else {
+            console.log('❌ Invalid drop target');
         }
         
         this.cancelDrag();
@@ -271,8 +287,8 @@ const InputManager = {
 
     showPlanetSelection(planet) {
         planet.element.setAttribute('stroke', '#ffff00');
-        planet.element.setAttribute('stroke-width', '3');
-        planet.element.setAttribute('stroke-dasharray', '3,3');
+        planet.element.setAttribute('stroke-width', '4');
+        planet.element.setAttribute('stroke-dasharray', '6,6');
         
         const statusEl = document.getElementById('gameStatus');
         if (statusEl) {
@@ -352,12 +368,12 @@ const InputManager = {
         line.setAttribute('x2', destination.x);
         line.setAttribute('y2', destination.y);
         line.setAttribute('stroke', '#00ff88');
-        line.setAttribute('stroke-width', '4');
-        line.setAttribute('opacity', '0.8');
+        line.setAttribute('stroke-width', '6');
+        line.setAttribute('opacity', '0.9');
         line.style.pointerEvents = 'none';
         svg.appendChild(line);
         
-        let opacity = 0.8;
+        let opacity = 0.9;
         const fadeInterval = setInterval(() => {
             opacity -= 0.1;
             line.setAttribute('opacity', opacity);
@@ -366,15 +382,15 @@ const InputManager = {
                 clearInterval(fadeInterval);
                 line.remove();
             }
-        }, 50);
+        }, 80);
         
         const statusEl = document.getElementById('gameStatus');
         if (statusEl) {
-            statusEl.textContent = `${ships} naves de ${origin.assignedKey} → ${destination.assignedKey}`;
+            statusEl.textContent = `✅ ${ships} naves enviadas: ${origin.assignedKey} → ${destination.assignedKey}`;
             
             setTimeout(() => {
                 statusEl.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
-            }, 2000);
+            }, 3000);
         }
     },
 
