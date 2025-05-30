@@ -1,4 +1,4 @@
-// Input Manager - FIXED for drag & drop and tooltips
+// Input Manager - FIXED mouse coordinate alignment with SVG viewBox
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -135,10 +135,29 @@ const InputManager = {
         const canvas = document.getElementById('gameCanvas');
         const rect = canvas.getBoundingClientRect();
         
+        // Get the actual viewBox dimensions (800x600)
+        const viewBox = canvas.viewBox.baseVal;
+        const viewBoxWidth = viewBox.width;
+        const viewBoxHeight = viewBox.height;
+        
+        // Calculate the scale factor
+        const scaleX = viewBoxWidth / rect.width;
+        const scaleY = viewBoxHeight / rect.height;
+        
+        // Convert screen coordinates to SVG coordinates
         const pos = {
-            x: (e.clientX - rect.left) * (800 / rect.width),
-            y: (e.clientY - rect.top) * (600 / rect.height)
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
+        
+        // Debug logging to verify coordinates
+        console.log('🎯 Coordinate conversion:', {
+            screen: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+            rect: { width: rect.width, height: rect.height },
+            viewBox: { width: viewBoxWidth, height: viewBoxHeight },
+            scale: { x: scaleX, y: scaleY },
+            svg: pos
+        });
         
         return pos;
     },
@@ -152,10 +171,13 @@ const InputManager = {
         
         for (let planet of GameEngine.planets) {
             const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
-            if (distance <= planet.radius) {
+            console.log(`🪐 Planet ${planet.id} at (${planet.x}, ${planet.y}), distance: ${distance.toFixed(1)}, radius: ${planet.radius}`);
+            if (distance <= planet.radius + 5) { // Add 5px tolerance for easier clicking
+                console.log(`✅ Found planet ${planet.id}`);
                 return planet;
             }
         }
+        console.log('❌ No planet found at position');
         return null;
     },
 
