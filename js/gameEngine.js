@@ -1,4 +1,4 @@
-// Game Engine - Action 02 Building System Integration
+// Game Engine - Action 02 CRITICAL FIX - Better balanced planet generation
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -6,7 +6,7 @@ const GameEngine = {
     isRunning: false,
     
     init() {
-        console.log('🚀 Initializing Game Engine with Action 02 Building System...');
+        console.log('🚀 Initializing Game Engine with BALANCED Action 02 Building System...');
         this.canvas = document.getElementById('gameCanvas');
         this.setupCanvas();
         
@@ -40,7 +40,7 @@ const GameEngine = {
     },
 
     initEvolutionSystems() {
-        console.log('✨ Initializing Action 02 Evolution Systems...');
+        console.log('✨ Initializing Action 02 BALANCED Evolution Systems...');
         
         // Action 01: Resource system
         if (typeof ResourceManager !== 'undefined') {
@@ -67,7 +67,7 @@ const GameEngine = {
             BalanceConfig.init();
         }
         
-        console.log('✅ Action 02 Evolution Systems initialized');
+        console.log('✅ Action 02 BALANCED Evolution Systems initialized');
     },
 
     setupCanvas() {
@@ -88,6 +88,9 @@ const GameEngine = {
         const numPlanets = CONFIG.PLANETS.COUNT;
         const minDistance = CONFIG.PLANETS.MIN_DISTANCE || 100;
         
+        // Use new capacity ranges from CONFIG
+        const capacities = CONFIG.PLANETS.CAPACITIES || [15, 18, 22, 25, 30, 35, 40, 45];
+        
         for (let i = 0; i < numPlanets; i++) {
             let attempts = 0;
             let planet;
@@ -96,7 +99,7 @@ const GameEngine = {
                 planet = {
                     x: Utils.randomBetween(80, 720),
                     y: Utils.randomBetween(80, 520),
-                    capacity: Utils.randomBetween(CONFIG.PLANETS.MIN_CAPACITY, CONFIG.PLANETS.MAX_CAPACITY)
+                    capacity: capacities[Math.floor(Math.random() * capacities.length)] // Use predefined capacities
                 };
                 attempts++;
             } while (attempts < 50 && this.planets.some(p => Utils.distance(p, planet) < minDistance));
@@ -113,11 +116,13 @@ const GameEngine = {
             this.planets.push(newPlanet);
         }
         
-        console.log(`✅ Generated ${numPlanets} planets with building support`);
+        console.log(`✅ Generated ${numPlanets} planets with BALANCED capacities and building support`);
     },
 
     assignInitialPlanets() {
-        const startShips = 10; // Fixed value for testing
+        // BALANCED: Use better starting ships from BalanceConfig
+        const startShips = (typeof BalanceConfig !== 'undefined' && BalanceConfig.getCurrentSettings) ? 
+                          BalanceConfig.getCurrentSettings().startShips : 15;
         
         // Player gets first planet
         this.planets[0].owner = 'player';
@@ -142,7 +147,27 @@ const GameEngine = {
             furthestPlanet.updateVisual();
         }
         
+        // CRITICAL FIX: Set neutral planets with MUCH FEWER ships for easier conquest
+        this.planets.forEach(planet => {
+            if (planet.owner === 'neutral') {
+                // BALANCED: Neutral planets have 3-8 ships (was 5-15)
+                planet.ships = Utils.randomInt(3, 8);
+                
+                // Give neutral planets some starting metal if they get conquered
+                if (CONFIG.PLANETS?.INITIAL_RESOURCES?.metal) {
+                    const metalRange = CONFIG.PLANETS.INITIAL_RESOURCES.metal;
+                    planet.aiMetal = Utils.randomInt(
+                        Math.floor(metalRange.min * 0.3), 
+                        Math.floor(metalRange.max * 0.5)
+                    ); // 30-50% of player starting metal
+                }
+                
+                planet.updateVisual();
+            }
+        });
+        
         console.log(`🎯 Initial planets assigned with ${startShips} ships each`);
+        console.log(`🎯 Neutral planets have 3-8 ships for easier conquest`);
     },
 
     assignKeyboardShortcuts() {
@@ -158,7 +183,7 @@ const GameEngine = {
     },
 
     start() {
-        console.log('🎮 Starting Action 02 enhanced game loop...');
+        console.log('🎮 Starting BALANCED Action 02 enhanced game loop...');
         this.isRunning = true;
         this.gameLoop = setInterval(() => {
             this.update();
