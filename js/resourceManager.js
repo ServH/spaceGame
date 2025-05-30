@@ -1,4 +1,4 @@
-// Resource Manager - Action 02 CRITICAL FIX - Proper production rates and balance
+// Resource Manager - OPCIÓN A GALCON - Ships regenerate FREE, sending costs 1 metal
 const ResourceManager = {
     // Resource tracking
     resources: {
@@ -10,34 +10,34 @@ const ResourceManager = {
     lastUpdate: 0,
     updateInterval: 1000, // Update every second
     
-    // Configuration - BALANCED for 60x faster gameplay
+    // OPCIÓN A: Configuration for Galcon-style gameplay
     config: {
         metal: {
-            // MUCH BETTER generation rates - per minute
+            // OPCIÓN A: Moderate generation rates for ship sending costs
             generationRates: {
-                small: 24.0,  // Small planets: 24 metal/min (was 8)
-                medium: 36.0, // Medium planets: 36 metal/min (was 12) 
-                large: 48.0   // Large planets: 48 metal/min (was 16)
+                small: 30.0,  // Small planets: 30 metal/min
+                medium: 45.0, // Medium planets: 45 metal/min
+                large: 60.0   // Large planets: 60 metal/min
             },
-            storageMultiplier: 4.0, // Even more storage
-            shipCost: 2 // REDUCED from 10 to 2
+            storageMultiplier: 4.0, // High storage for large fleets
+            shipCost: 1 // OPCIÓN A: Very cheap sending cost
         },
         energy: {
-            generationBase: 6.0, // 6 energy/min per planet (was 1.0)
+            generationBase: 6.0, // 6 energy/min per planet
             storageMultiplier: 2.0,
             shipCost: 0
         }
     },
 
-    // Initialize with EXCELLENT starting resources
+    // OPCIÓN A: Excellent starting resources for immediate action
     init() {
-        this.resources.metal = 200; // MUCH MORE starting metal
-        this.resources.energy = 100; // MORE starting energy
+        this.resources.metal = 120; // Good starting metal for several fleets
+        this.resources.energy = 80;  // Good starting energy
         this.lastUpdate = Date.now();
-        console.log('💎 Resource Manager initialized - BALANCED & FAST');
+        console.log('💎 Resource Manager initialized - OPCIÓN A GALCON');
     },
 
-    // Main update loop - CORRECTED TIME CALCULATION
+    // Main update loop
     update() {
         const now = Date.now();
         if (now - this.lastUpdate >= this.updateInterval) {
@@ -46,7 +46,7 @@ const ResourceManager = {
         }
     },
 
-    // CRITICAL FIX: Proper resource generation calculation
+    // OPCIÓN A: Resource generation for supporting ship sending
     generateResources() {
         if (!GameEngine || !GameEngine.planets) return;
 
@@ -55,25 +55,23 @@ const ResourceManager = {
         const ownedPlanets = GameEngine.planets.filter(p => p.owner === 'player');
 
         ownedPlanets.forEach(planet => {
-            // Metal generation - FIXED CALCULATION
+            // Metal generation for ship sending costs
             const metalGeneration = this.getPlanetMetalGeneration(planet);
             const currentMetalStorage = this.resources.metal;
             const maxMetalStorage = this.getTotalMetalStorageCapacity();
 
             if (currentMetalStorage < maxMetalStorage) {
-                // CORRECT: Generate per second (metalGeneration is per minute, so divide by 60)
                 const metalPerSecond = metalGeneration / 60;
                 const actualMetalGeneration = Math.min(metalPerSecond, maxMetalStorage - currentMetalStorage);
                 totalMetalGeneration += actualMetalGeneration;
             }
 
-            // Energy generation - FIXED CALCULATION
+            // Energy generation
             const energyGeneration = this.getPlanetEnergyGeneration(planet);
             const currentEnergyStorage = this.resources.energy;
             const maxEnergyStorage = this.getTotalEnergyStorageCapacity();
 
             if (currentEnergyStorage < maxEnergyStorage) {
-                // CORRECT: Generate per second (energyGeneration is per minute, so divide by 60)
                 const energyPerSecond = energyGeneration / 60;
                 const actualEnergyGeneration = Math.min(energyPerSecond, maxEnergyStorage - currentEnergyStorage);
                 totalEnergyGeneration += actualEnergyGeneration;
@@ -90,14 +88,14 @@ const ResourceManager = {
         }
     },
 
-    // IMPROVED: Get metal generation rate for a planet (per minute)
+    // OPCIÓN A: Metal generation scaled by planet size
     getPlanetMetalGeneration(planet) {
         const capacity = planet.capacity;
         let rate;
 
-        if (capacity <= 20) {
+        if (capacity <= 25) {
             rate = this.config.metal.generationRates.small;
-        } else if (capacity <= 30) {
+        } else if (capacity <= 45) {
             rate = this.config.metal.generationRates.medium;
         } else {
             rate = this.config.metal.generationRates.large;
@@ -108,7 +106,7 @@ const ResourceManager = {
         return rate * multiplier;
     },
 
-    // Get energy generation rate for a planet (per minute)
+    // Energy generation per planet
     getPlanetEnergyGeneration(planet) {
         let baseGeneration = this.config.energy.generationBase;
         
@@ -118,9 +116,9 @@ const ResourceManager = {
         return baseGeneration + bonus;
     },
 
-    // IMPROVED: Storage capacity methods
+    // OPCIÓN A: Higher storage capacity for large fleets
     getTotalMetalStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 400;
+        if (!GameEngine || !GameEngine.planets) return 500;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
@@ -128,14 +126,14 @@ const ResourceManager = {
     },
 
     getTotalEnergyStorageCapacity() {
-        if (!GameEngine || !GameEngine.planets) return 200;
+        if (!GameEngine || !GameEngine.planets) return 250;
 
         return GameEngine.planets
             .filter(p => p.owner === 'player')
             .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);
     },
 
-    // LEGACY COMPATIBILITY
+    // Legacy compatibility
     getTotalStorageCapacity() {
         return this.getTotalMetalStorageCapacity();
     },
@@ -188,7 +186,7 @@ const ResourceManager = {
         return this.getEnergy();
     },
 
-    // CRITICAL FIX: Ship cost methods - MUCH CHEAPER
+    // OPCIÓN A: Very cheap ship sending costs
     canAffordShip(shipCount = 1) {
         const totalCost = this.config.metal.shipCost * shipCount;
         return this.resources.metal >= totalCost;
@@ -222,7 +220,7 @@ const ResourceManager = {
         }
     },
 
-    // IMPROVED: Update main resource displays in header
+    // Update main resource displays in header
     updateMainDisplays() {
         const resourceDisplay = document.getElementById('mainResourceDisplay');
         
@@ -277,11 +275,11 @@ const ResourceManager = {
 
     // Reset resource system
     reset() {
-        this.resources.metal = 200;
-        this.resources.energy = 100;
+        this.resources.metal = 120;
+        this.resources.energy = 80;
         this.lastUpdate = Date.now();
         this.updateUI();
-        console.log('💎 Resource Manager reset - BALANCED MODE');
+        console.log('💎 Resource Manager reset - OPCIÓN A GALCON');
     },
 
     // Debug methods
