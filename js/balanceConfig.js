@@ -1,35 +1,34 @@
-// Balance Config - V1.4 Simplified for Classic Mode Only
+// Balance Config - V1.4 FIXED - Only total conquest victory for classic mode
 const BalanceConfig = {
     // Base values for classic gameplay
     BASE: {
-        START_SHIPS: 10,
-        PRODUCTION_BASE: 0.8,
-        PRODUCTION_MULTIPLIER: 0.15,
+        START_SHIPS: 15,  // Increased from 10
+        PRODUCTION_BASE: 0.5,
+        PRODUCTION_MULTIPLIER: 0.2,
         FLEET_SPEED: 80,
         CONQUEST_TIME: 2000,
-        AI_DECISION_INTERVAL: 3000,
+        AI_DECISION_INTERVAL: 2500,
         CAPACITY_MULTIPLIER: 1.0,
         // Testing optimization - 3x faster metal for gameplay testing
         TESTING_MODE: true
     },
 
-    // Classic mode configuration (only mode supported)
+    // Classic mode configuration - ONLY CONQUEST VICTORY
     CLASSIC: {
         name: 'Clásico Evolucionado',
         settings: {
-            startShips: 10,
+            startShips: 15,  // Increased
             capacityMultiplier: 1.0,
             minShipsToSend: 1,
-            productionBase: 0.8,
-            productionMultiplier: 0.15,
+            productionBase: 0.5,
+            productionMultiplier: 0.2,
             fleetSpeed: 80,
             conquestTime: 2000,
-            aiDecisionInterval: 3000
+            aiDecisionInterval: 2500
         },
         victory: {
-            condition: 'total_control',
-            earlyAdvantageThreshold: 0.85, // 85% of planets for early victory
-            economicRatio: 3.0 // 3:1 ship ratio for economic victory
+            condition: 'conquest_only',  // ONLY conquest victory
+            totalControlRequired: true   // Must control ALL planets
         }
     },
 
@@ -58,10 +57,10 @@ const BalanceConfig = {
         CONFIG.PLANETS.CONQUEST_TIME = this.appliedSettings.conquestTime;
         CONFIG.AI.DECISION_INTERVAL = this.appliedSettings.aiDecisionInterval;
 
-        console.log('⚖️ Balance initialized for Classic Evolution mode:', {
+        console.log('⚖️ Balance initialized for CONQUEST ONLY mode:', {
             startShips: this.appliedSettings.startShips,
-            testingMode: this.BASE.TESTING_MODE ? 'ENABLED (3x metal)' : 'DISABLED',
-            victory: this.appliedSettings.victory
+            victoryCondition: 'CONQUEST ONLY - No economic victory',
+            testingMode: this.BASE.TESTING_MODE ? 'ENABLED' : 'DISABLED'
         });
     },
 
@@ -70,54 +69,30 @@ const BalanceConfig = {
         return this.appliedSettings;
     },
 
-    // Check victory conditions
+    // FIXED: Check victory conditions - ONLY CONQUEST
     checkVictoryConditions(playerPlanets, aiPlanets, totalPlanets, playerShips, aiShips) {
-        const victory = this.appliedSettings.victory;
-        
-        // Total control victory (main condition)
+        // ONLY conquest victory allowed in classic mode
         if (playerPlanets === totalPlanets) {
-            return { winner: 'player', condition: 'total_control' };
+            return { winner: 'player', condition: 'total_conquest' };
         }
         if (aiPlanets === totalPlanets) {
-            return { winner: 'ai', condition: 'total_control' };
+            return { winner: 'ai', condition: 'total_conquest' };
         }
         
-        // Early advantage victory
-        const playerAdvantage = playerPlanets / totalPlanets;
-        const aiAdvantage = aiPlanets / totalPlanets;
-        
-        if (playerAdvantage >= victory.earlyAdvantageThreshold) {
-            return { winner: 'player', condition: 'early_advantage' };
-        }
-        if (aiAdvantage >= victory.earlyAdvantageThreshold) {
-            return { winner: 'ai', condition: 'early_advantage' };
-        }
-        
-        // Economic victory
-        const shipRatio = playerShips / Math.max(aiShips, 1);
-        const aiShipRatio = aiShips / Math.max(playerShips, 1);
-        
-        if (shipRatio >= victory.economicRatio && playerPlanets > aiPlanets) {
-            return { winner: 'player', condition: 'economic' };
-        }
-        if (aiShipRatio >= victory.economicRatio && aiPlanets > playerPlanets) {
-            return { winner: 'ai', condition: 'economic' };
-        }
-        
-        return null; // No victory yet
+        // NO OTHER VICTORY CONDITIONS
+        return null; // Game continues until total conquest
     },
 
     // Debug: Show current settings
     debugCurrentSettings() {
         console.table({
-            'Mode': 'Classic Evolution',
+            'Mode': 'Classic Evolution - CONQUEST ONLY',
             'Start Ships': this.appliedSettings.startShips,
             'Production Base': this.appliedSettings.productionBase,
             'Fleet Speed': this.appliedSettings.fleetSpeed,
             'Conquest Time': this.appliedSettings.conquestTime + 'ms',
-            'Early Victory': `${this.appliedSettings.victory.earlyAdvantageThreshold * 100}%`,
-            'Economic Ratio': `${this.appliedSettings.victory.economicRatio}:1`,
-            'Testing Mode': this.BASE.TESTING_MODE ? 'ON (3x metal)' : 'OFF'
+            'Victory Condition': 'TOTAL CONQUEST ONLY',
+            'Testing Mode': this.BASE.TESTING_MODE ? 'ON' : 'OFF'
         });
     }
 };
