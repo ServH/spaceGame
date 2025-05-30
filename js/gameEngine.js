@@ -1,4 +1,4 @@
-// Game Engine - Classic Evolution Action 01 - FIXED INPUT COMPATIBILITY
+// Game Engine - Classic Evolution Action 01 - STREAMLINED
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -58,10 +58,12 @@ const GameEngine = {
             console.error('❌ Canvas not found!');
             return;
         }
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
+        
+        // Make sure viewBox is set correctly
         this.canvas.setAttribute('viewBox', '0 0 800 600');
-        console.log('✅ Canvas setup complete');
+        this.canvas.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        
+        console.log('✅ Canvas setup complete with viewBox:', this.canvas.getAttribute('viewBox'));
     },
 
     generatePlanets() {
@@ -201,17 +203,8 @@ const GameEngine = {
         }
     },
 
-    // FIXED: Essential functions for Input system
-    getPlanetAt(x, y) {
-        // More robust planet detection
-        for (let planet of this.planets) {
-            const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
-            if (distance <= planet.radius) {
-                return planet;
-            }
-        }
-        return null;
-    },
+    // REMOVED: getPlanetAt - Now handled by InputManager directly
+    // This avoids conflicts and simplifies the code
 
     getPlanetById(id) {
         return this.planets.find(p => p.id === id);
@@ -231,14 +224,24 @@ const GameEngine = {
         return null;
     },
 
-    // Debug input system
-    debugInputSystem() {
-        console.log('🔍 Input System Debug:');
-        console.log('- Canvas:', this.canvas);
-        console.log('- Planets:', this.planets.length);
-        console.log('- InputManager initialized:', InputManager.initialized);
-        if (this.planets.length > 0) {
-            console.log('- First planet:', this.planets[0]);
+    // Debug coordinate system
+    debugCoordinates(e) {
+        if (e) {
+            const svg = document.getElementById('gameCanvas');
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+            
+            console.log('🎯 Debug Coordinates:', {
+                screen: { x: e.clientX, y: e.clientY },
+                svg: { x: svgP.x.toFixed(1), y: svgP.y.toFixed(1) },
+                planets: this.planets.map(p => ({
+                    id: p.id,
+                    pos: { x: p.x, y: p.y },
+                    radius: p.radius
+                }))
+            });
         }
     }
 };
