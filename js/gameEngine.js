@@ -1,4 +1,4 @@
-// Game Engine - Classic Evolution Action 01 - FIXED COMPATIBILITY
+// Game Engine - Classic Evolution Action 01 - FIXED INPUT COMPATIBILITY
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -30,7 +30,9 @@ const GameEngine = {
             UI.init();
         }
         
+        // IMPORTANT: Initialize InputManager AFTER planets are created
         if (typeof InputManager !== 'undefined') {
+            console.log('🎮 Initializing InputManager...');
             InputManager.init();
         }
         
@@ -52,10 +54,14 @@ const GameEngine = {
     },
 
     setupCanvas() {
-        if (!this.canvas) return;
+        if (!this.canvas) {
+            console.error('❌ Canvas not found!');
+            return;
+        }
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
         this.canvas.setAttribute('viewBox', '0 0 800 600');
+        console.log('✅ Canvas setup complete');
     },
 
     generatePlanets() {
@@ -80,7 +86,7 @@ const GameEngine = {
             this.planets.push(newPlanet);
         }
         
-        console.log(`Generated ${numPlanets} planets`);
+        console.log(`✅ Generated ${numPlanets} planets`);
     },
 
     assignInitialPlanets() {
@@ -195,11 +201,16 @@ const GameEngine = {
         }
     },
 
-    // Essential functions for Input system
+    // FIXED: Essential functions for Input system
     getPlanetAt(x, y) {
-        return this.planets.find(planet => 
-            Utils.pointInCircle({ x, y }, { x: planet.x, y: planet.y, radius: planet.radius })
-        );
+        // More robust planet detection
+        for (let planet of this.planets) {
+            const distance = Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2);
+            if (distance <= planet.radius) {
+                return planet;
+            }
+        }
+        return null;
     },
 
     getPlanetById(id) {
@@ -218,5 +229,16 @@ const GameEngine = {
             return ResourceManager.debugInfo();
         }
         return null;
+    },
+
+    // Debug input system
+    debugInputSystem() {
+        console.log('🔍 Input System Debug:');
+        console.log('- Canvas:', this.canvas);
+        console.log('- Planets:', this.planets.length);
+        console.log('- InputManager initialized:', InputManager.initialized);
+        if (this.planets.length > 0) {
+            console.log('- First planet:', this.planets[0]);
+        }
     }
 };
