@@ -1,4 +1,4 @@
-// Game Engine - Action 02 CRITICAL FIX - Better balanced planet generation
+// Game Engine - OPCIÓN A GALCON - Easier neutrals, larger planets, better balance
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -6,7 +6,7 @@ const GameEngine = {
     isRunning: false,
     
     init() {
-        console.log('🚀 Initializing Game Engine with BALANCED Action 02 Building System...');
+        console.log('🚀 Initializing Game Engine - OPCIÓN A GALCON STYLE...');
         this.canvas = document.getElementById('gameCanvas');
         this.setupCanvas();
         
@@ -40,7 +40,7 @@ const GameEngine = {
     },
 
     initEvolutionSystems() {
-        console.log('✨ Initializing Action 02 BALANCED Evolution Systems...');
+        console.log('✨ Initializing OPCIÓN A GALCON Evolution Systems...');
         
         // Action 01: Resource system
         if (typeof ResourceManager !== 'undefined') {
@@ -67,7 +67,7 @@ const GameEngine = {
             BalanceConfig.init();
         }
         
-        console.log('✅ Action 02 BALANCED Evolution Systems initialized');
+        console.log('✅ OPCIÓN A GALCON Evolution Systems initialized');
     },
 
     setupCanvas() {
@@ -88,8 +88,8 @@ const GameEngine = {
         const numPlanets = CONFIG.PLANETS.COUNT;
         const minDistance = CONFIG.PLANETS.MIN_DISTANCE || 100;
         
-        // Use new capacity ranges from CONFIG
-        const capacities = CONFIG.PLANETS.CAPACITIES || [15, 18, 22, 25, 30, 35, 40, 45];
+        // OPCIÓN A: Use larger capacity ranges from CONFIG
+        const capacities = CONFIG.PLANETS.CAPACITIES || [20, 25, 30, 40, 50, 60, 70];
         
         for (let i = 0; i < numPlanets; i++) {
             let attempts = 0;
@@ -99,7 +99,7 @@ const GameEngine = {
                 planet = {
                     x: Utils.randomBetween(80, 720),
                     y: Utils.randomBetween(80, 520),
-                    capacity: capacities[Math.floor(Math.random() * capacities.length)] // Use predefined capacities
+                    capacity: capacities[Math.floor(Math.random() * capacities.length)] // Use larger capacities
                 };
                 attempts++;
             } while (attempts < 50 && this.planets.some(p => Utils.distance(p, planet) < minDistance));
@@ -116,11 +116,11 @@ const GameEngine = {
             this.planets.push(newPlanet);
         }
         
-        console.log(`✅ Generated ${numPlanets} planets with BALANCED capacities and building support`);
+        console.log(`✅ Generated ${numPlanets} planets with OPCIÓN A GALCON capacities and building support`);
     },
 
     assignInitialPlanets() {
-        // BALANCED: Use better starting ships from BalanceConfig
+        // OPCIÓN A: Better starting conditions
         const startShips = (typeof BalanceConfig !== 'undefined' && BalanceConfig.getCurrentSettings) ? 
                           BalanceConfig.getCurrentSettings().startShips : 15;
         
@@ -147,19 +147,19 @@ const GameEngine = {
             furthestPlanet.updateVisual();
         }
         
-        // CRITICAL FIX: Set neutral planets with MUCH FEWER ships for easier conquest
+        // OPCIÓN A: MUCH EASIER neutral planets for early expansion
         this.planets.forEach(planet => {
             if (planet.owner === 'neutral') {
-                // BALANCED: Neutral planets have 3-8 ships (was 5-15)
+                // OPCIÓN A: Very easy neutrals - only 3-8 ships (was 5-15)
                 planet.ships = Utils.randomInt(3, 8);
                 
-                // Give neutral planets some starting metal if they get conquered
+                // Give neutral planets some starting metal reward for conquest
                 if (CONFIG.PLANETS?.INITIAL_RESOURCES?.metal) {
                     const metalRange = CONFIG.PLANETS.INITIAL_RESOURCES.metal;
                     planet.aiMetal = Utils.randomInt(
                         Math.floor(metalRange.min * 0.3), 
                         Math.floor(metalRange.max * 0.5)
-                    ); // 30-50% of player starting metal
+                    ); // 30-50% of starting metal as reward
                 }
                 
                 planet.updateVisual();
@@ -167,7 +167,7 @@ const GameEngine = {
         });
         
         console.log(`🎯 Initial planets assigned with ${startShips} ships each`);
-        console.log(`🎯 Neutral planets have 3-8 ships for easier conquest`);
+        console.log(`🎯 OPCIÓN A: Neutral planets have only 3-8 ships for easy early expansion`);
     },
 
     assignKeyboardShortcuts() {
@@ -183,7 +183,7 @@ const GameEngine = {
     },
 
     start() {
-        console.log('🎮 Starting BALANCED Action 02 enhanced game loop...');
+        console.log('🎮 Starting OPCIÓN A GALCON enhanced game loop...');
         this.isRunning = true;
         this.gameLoop = setInterval(() => {
             this.update();
@@ -251,21 +251,15 @@ const GameEngine = {
             if (victory) {
                 let message = '';
                 switch (victory.condition) {
-                    case 'total_control':
+                    case 'total_conquest':
                         message = victory.winner === 'player' ? 
                             '¡Victoria Total! Has conquistado todos los planetas' :
                             '¡Derrota! La IA ha conquistado todos los planetas';
                         break;
-                    case 'early_advantage':
+                    default:
                         message = victory.winner === 'player' ?
-                            '¡Victoria por Dominio! Controlas la mayoría de planetas' :
-                            '¡Derrota! La IA domina la galaxia';
-                        break;
-                    case 'economic':
-                        message = victory.winner === 'player' ?
-                            '¡Victoria Económica! Tu flota es dominante' :
-                            '¡Derrota! La flota IA es superior';
-                        break;
+                            '¡Victoria!' :
+                            '¡Derrota!';
                 }
                 this.endGame(message);
                 return;
