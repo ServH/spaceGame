@@ -1,18 +1,32 @@
-// Building UI - Action 02 User Interface for Building System
+// Building UI - Action 02 FIXED - Ensure proper initialization and right-click functionality
 const BuildingUI = {
     
     currentPlanet: null,
     menuVisible: false,
+    initialized: false,
     
     init() {
+        if (this.initialized) return;
+        
         console.log('🖥️ Initializing Building UI...');
-        this.setupEventListeners();
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
+        } else {
+            this.setupEventListeners();
+        }
+        
+        this.initialized = true;
     },
 
     // Setup event listeners for building UI
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
-        if (!canvas) return;
+        if (!canvas) {
+            console.error('❌ Canvas not found for BuildingUI');
+            return;
+        }
 
         // Right-click to open building menu
         canvas.addEventListener('contextmenu', (event) => {
@@ -26,10 +40,14 @@ const BuildingUI = {
                 this.hideBuildingMenu();
             }
         });
+        
+        console.log('✅ Building UI event listeners setup complete');
     },
 
     // Handle right-click on canvas
     handleRightClick(event) {
+        console.log('🖱️ Right-click detected at', event.clientX, event.clientY);
+        
         const rect = event.target.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
@@ -38,23 +56,29 @@ const BuildingUI = {
         const gameX = (x / rect.width) * 800;
         const gameY = (y / rect.height) * 600;
         
+        console.log('🎯 Converted coordinates:', gameX, gameY);
+        
         // Find clicked planet
         const planet = this.findPlanetAt(gameX, gameY);
         
+        console.log('🪐 Found planet:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}` : 'None');
+        
         if (planet && planet.owner === 'player') {
+            console.log('🏗️ Showing building menu for player planet', planet.id);
             this.showBuildingMenu(planet, event.clientX, event.clientY);
         } else {
+            console.log('❌ Not a player planet or no planet found');
             this.hideBuildingMenu();
         }
     },
 
     // Find planet at coordinates
     findPlanetAt(x, y) {
-        if (!GameEngine.planets) return null;
+        if (!GameEngine || !GameEngine.planets) return null;
         
         return GameEngine.planets.find(planet => {
             const distance = Math.sqrt(Math.pow(planet.x - x, 2) + Math.pow(planet.y - y, 2));
-            return distance <= planet.radius;
+            return distance <= planet.radius + 15; // Add some tolerance
         });
     },
 
@@ -83,6 +107,7 @@ const BuildingUI = {
         menu.style.top = y + 'px';
         
         this.menuVisible = true;
+        console.log('✅ Building menu displayed');
     },
 
     // Create building menu DOM
@@ -130,6 +155,20 @@ const BuildingUI = {
             Construyendo: ${constructing.length}
         `;
         menu.appendChild(info);
+
+        // Current resources
+        const resourceInfo = document.createElement('div');
+        resourceInfo.style.cssText = `
+            background: rgba(0, 255, 136, 0.1);
+            padding: 5px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 11px;
+        `;
+        resourceInfo.innerHTML = `
+            🔩 Metal: ${ResourceManager.getMetal()} | ⚡ Energy: ${ResourceManager.getEnergy()}
+        `;
+        menu.appendChild(resourceInfo);
 
         // Available buildings
         const buildingsTitle = document.createElement('div');
@@ -230,10 +269,12 @@ const BuildingUI = {
             });
 
             option.addEventListener('click', () => {
+                console.log(`🏗️ Attempting to build ${building.name} on planet ${planet.id}`);
                 if (BuildingManager.startConstruction(planet, buildingId)) {
+                    console.log('✅ Construction started successfully');
                     this.hideBuildingMenu();
                 } else {
-                    console.log('Failed to start construction');
+                    console.log('❌ Failed to start construction');
                 }
             });
         }
@@ -342,6 +383,7 @@ const BuildingUI = {
         
         this.menuVisible = false;
         this.currentPlanet = null;
+        console.log('🔒 Building menu hidden');
     },
 
     // Update planet buildings display (called by BuildingManager)
@@ -366,7 +408,7 @@ const BuildingUI = {
         if (!planet.element) return;
 
         // Remove existing building indicators
-        const existingIndicators = planet.element.querySelectorAll('.building-indicator');
+        const existingIndicators = planet.element.parentNode.querySelectorAll(`.building-indicator[data-planet="${planet.id}"]`);
         existingIndicators.forEach(indicator => indicator.remove());
 
         // Add building indicators
@@ -402,6 +444,7 @@ const BuildingUI = {
         indicator.setAttribute('stroke', 'white');
         indicator.setAttribute('stroke-width', '1');
         indicator.setAttribute('opacity', '0.9');
+        indicator.setAttribute('data-planet', planet.id);
         indicator.className = 'building-indicator';
         
         canvas.appendChild(indicator);
@@ -420,6 +463,7 @@ const BuildingUI = {
         indicator.setAttribute('stroke', '#ffa500');
         indicator.setAttribute('stroke-width', '2');
         indicator.setAttribute('stroke-dasharray', '5,5');
+        indicator.setAttribute('data-planet', planet.id);
         indicator.className = 'building-indicator construction-indicator';
         
         // Animate construction indicator
@@ -439,45 +483,6 @@ const BuildingUI = {
         }, construction.buildTime - (Date.now() - construction.startTime));
         
         canvas.appendChild(indicator);
-    },
-
-    // Show notification for building completion
-    showBuildingNotification(planet, buildingId) {
-        const building = Buildings.getDefinition(buildingId);
-        if (!building) return;
-
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background: rgba(0, 255, 136, 0.9);
-            color: black;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            z-index: 2500;
-            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.5);
-        `;
-        
-        notification.innerHTML = `
-            ${building.icon} ${building.name} completado<br>
-            <small>Planeta ${planet.id.toUpperCase()}</small>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove notification
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.transform = 'translateX(100%)';
-                notification.style.opacity = '0';
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }
-        }, 3000);
     }
 };
 
