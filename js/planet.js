@@ -1,4 +1,4 @@
-// Planet class - Action 02 BALANCED - AI also uses resources for fair gameplay
+// Planet class - Action 02 BALANCED - Reduced logging and better AI economy
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -14,9 +14,9 @@ class Planet {
         this.isBeingConquered = false;
         this.conqueror = null;
         
-        // Production
+        // Production - SLOWER for better balance
         this.lastProduction = Date.now();
-        this.productionRate = CONFIG.PLANETS.PRODUCTION_BASE + (capacity * CONFIG.PLANETS.PRODUCTION_MULTIPLIER);
+        this.productionRate = (CONFIG.PLANETS.PRODUCTION_BASE + (capacity * CONFIG.PLANETS.PRODUCTION_MULTIPLIER)) * 0.6; // 40% slower
         
         // Action 02: Building system properties
         this.buildings = {};
@@ -25,8 +25,9 @@ class Planet {
         this.energyGenerationBonus = 0;
         this.researchPointsGeneration = 0;
         
-        // Action 02: AI Resource tracking (simplified)
-        this.aiMetal = 100; // AI starts with same resources as player
+        // Action 02: AI Resource tracking (improved)
+        this.aiMetal = 150; // AI starts with more resources
+        this.lastAIMetalUpdate = Date.now();
         
         // Visual
         this.element = null;
@@ -125,7 +126,7 @@ class Planet {
             }
         }
         
-        // Update AI metal generation (simplified)
+        // Update AI metal generation (improved and less frequent)
         if (this.owner === 'ai') {
             this.updateAIMetal();
         }
@@ -139,7 +140,7 @@ class Planet {
         }
     }
 
-    // Action 02: BALANCED - Both player and AI pay for ships
+    // Action 02: BALANCED - Both player and AI pay for ships - REDUCED LOGGING
     tryCreateShip() {
         const shipCost = CONFIG.SHIP_COST?.metal || 10;
         
@@ -150,32 +151,40 @@ class Planet {
                     ResourceManager.payForShips(1);
                     return true;
                 } else {
-                    // Not enough metal, don't create ship
+                    // REDUCED LOGGING: Only log occasionally
+                    if (Math.random() < 0.1) { // 10% chance to log
+                        console.log(`Player planet ${this.id}: No metal for ship production`);
+                    }
                     return false;
                 }
             }
-            return true; // Fallback if ResourceManager not available
+            return true;
         } else if (this.owner === 'ai') {
             // AI ships cost metal from planet's local AI economy
             if (this.aiMetal >= shipCost) {
                 this.aiMetal -= shipCost;
-                console.log(`🤖 AI Planet ${this.id}: Paid ${shipCost} metal for ship (remaining: ${this.aiMetal})`);
+                // REDUCED LOGGING: Only log occasionally
+                if (Math.random() < 0.05) { // 5% chance to log
+                    console.log(`🤖 AI Planet ${this.id}: Paid ${shipCost} metal (remaining: ${this.aiMetal})`);
+                }
                 return true;
             } else {
-                console.log(`🤖 AI Planet ${this.id}: Not enough metal for ship (need ${shipCost}, have ${this.aiMetal})`);
+                // REDUCED LOGGING: Only log occasionally  
+                if (Math.random() < 0.1) { // 10% chance to log
+                    console.log(`🤖 AI Planet ${this.id}: No metal for ship`);
+                }
                 return false;
             }
         }
         return false;
     }
 
-    // Simple AI metal generation (balanced with player)
+    // IMPROVED AI metal generation - more consistent and balanced
     updateAIMetal() {
-        // AI generates metal similar to player but simplified
         const now = Date.now();
-        if (now - this.lastAIMetalUpdate > 60000) { // Every minute
-            const generation = 6.0; // Base generation similar to player
-            this.aiMetal = Math.min(this.aiMetal + generation, 200); // Cap at 200
+        if (now - this.lastAIMetalUpdate > 15000) { // Every 15 seconds instead of 60
+            const generation = 8.0; // More generation than player for AI competitiveness
+            this.aiMetal = Math.min(this.aiMetal + generation, 300); // Higher cap
             this.lastAIMetalUpdate = now;
         }
     }
@@ -201,7 +210,7 @@ class Planet {
         
         // Initialize AI metal when AI conquers a planet
         if (this.owner === 'ai') {
-            this.aiMetal = 100;
+            this.aiMetal = 150;
             this.lastAIMetalUpdate = Date.now();
         }
         
@@ -232,7 +241,7 @@ class Planet {
                 
                 // Initialize AI metal when AI conquers a planet
                 if (this.owner === 'ai' && oldOwner !== 'ai') {
-                    this.aiMetal = 100;
+                    this.aiMetal = 150;
                     this.lastAIMetalUpdate = Date.now();
                 }
             } else {
@@ -298,7 +307,7 @@ class Planet {
             }
         }
 
-        // Show AI metal for debugging
+        // Show AI metal for debugging (simplified)
         if (this.owner === 'ai') {
             info += `<br><small>AI Metal: ${Math.floor(this.aiMetal)}</small>`;
         }
@@ -319,8 +328,10 @@ class Planet {
 
     // Action 02: Update production rates when buildings change
     updateProduction() {
-        // This will be called when building effects are applied
-        console.log(`Planet ${this.id} production updated - multiplier: ${this.shipProductionMultiplier}x`);
+        // REDUCED LOGGING
+        if (Math.random() < 0.1) {
+            console.log(`Planet ${this.id} production updated - multiplier: ${this.shipProductionMultiplier}x`);
+        }
     }
 
     destroy() {
