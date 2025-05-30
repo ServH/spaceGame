@@ -1,4 +1,4 @@
-// Input Manager - FIXED with SVG native coordinate system for perfect alignment
+// Input Manager - Action 02 FIXED - Ships should cost only when CREATED, not when SENT
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -27,7 +27,7 @@ const InputManager = {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
         this.initialized = true;
-        console.log('🎮 Input Manager initialized with PERFECT SVG coordinate system');
+        console.log('🎮 Input Manager initialized - Action 02 (Ships cost metal only when CREATED)');
     },
 
     setupMouseEvents() {
@@ -55,8 +55,14 @@ const InputManager = {
         canvas.addEventListener('mouseleave', () => {
             this.handleMouseLeave();
         }, false);
+
+        // RIGHT CLICK for building menu (Action 02)
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            // Building menu handled by BuildingUI
+        }, false);
         
-        console.log('✅ Mouse events setup complete with SVG coordinate fix');
+        console.log('✅ Mouse events setup complete - Action 02');
     },
 
     setupKeyboardEvents() {
@@ -130,7 +136,7 @@ const InputManager = {
         if (UI && UI.hideTooltip) UI.hideTooltip();
     },
 
-    // CRITICAL FIX: Use SVG's native coordinate transformation
+    // Use SVG's native coordinate transformation
     getSVGCoordinates(e) {
         const svg = document.getElementById('gameCanvas');
         
@@ -141,14 +147,6 @@ const InputManager = {
         
         // Transform using SVG's own coordinate system
         const transformed = pt.matrixTransform(svg.getScreenCTM().inverse());
-        
-        // Log for debugging alignment
-        if (this.dragState.isDragging) {
-            console.log('🎯 SVG Coordinates:', {
-                screen: { x: e.clientX, y: e.clientY },
-                svg: { x: transformed.x.toFixed(1), y: transformed.y.toFixed(1) }
-            });
-        }
         
         return {
             x: transformed.x,
@@ -179,10 +177,6 @@ const InputManager = {
             }
         }
         
-        if (closestPlanet) {
-            console.log(`✅ Found planet ${closestPlanet.id} at distance ${closestDistance.toFixed(1)}px`);
-        }
-        
         return closestPlanet;
     },
 
@@ -203,12 +197,9 @@ const InputManager = {
         this.dragState.dragLine.setAttribute('opacity', '0.9');
         this.dragState.dragLine.style.pointerEvents = 'none';
         
-        // Add animation class for moving dashes
-        this.dragState.dragLine.setAttribute('class', 'drag-line');
-        
         svg.appendChild(this.dragState.dragLine);
         
-        console.log('✅ Drag line created with enhanced visuals');
+        console.log('✅ Drag line created');
     },
 
     updateDrag(e) {
@@ -308,11 +299,12 @@ const InputManager = {
             this.keyboardState.selectedPlanet = null;
             const statusEl = document.getElementById('gameStatus');
             if (statusEl) {
-                statusEl.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
+                statusEl.textContent = '¡Conquista todos los planetas! (Evolution: Building System)';
             }
         }
     },
 
+    // FIXED: Ships are FREE to send, they only cost metal when CREATED by planets
     executeFleetCommand(origin, destination) {
         if (!origin || !destination || origin === destination) return;
         if (origin.owner !== 'player') return;
@@ -322,38 +314,29 @@ const InputManager = {
         console.log(`🚀 Executing fleet command: ${shipsToSend} ships from ${origin.id} to ${destination.id}`);
         
         if (shipsToSend >= 1) {
-            // Check if fleet can be created (including resource costs)
-            const canCreate = FleetManager.canCreateFleet(origin, destination, shipsToSend, 'player');
-            
-            if (!canCreate.canCreate) {
-                // Show appropriate error message
-                if (canCreate.reason === 'insufficient_resources') {
-                    if (UI && UI.showResourceInsufficient) {
-                        UI.showResourceInsufficient('Metal', canCreate.need, canCreate.have);
-                    }
-                } else if (canCreate.reason === 'insufficient_ships') {
-                    if (UI && UI.showNotification) {
-                        UI.showNotification(
-                            `No hay suficientes naves en planeta ${origin.assignedKey}`,
-                            'warning',
-                            3000
+            // FIXED: No resource cost for SENDING ships, only check if we have enough ships
+            if (origin.ships >= shipsToSend) {
+                // Create the fleet (FREE - no resource cost)
+                const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
+                if (fleet) {
+                    this.showFleetLaunch(origin, destination, shipsToSend);
+                    
+                    // Show fleet launched notification
+                    if (UI && UI.showFleetLaunched) {
+                        UI.showFleetLaunched(
+                            origin.assignedKey || `P${origin.id}`,
+                            destination.assignedKey || `P${destination.id}`,
+                            shipsToSend
                         );
                     }
                 }
-                return;
-            }
-            
-            // Create the fleet
-            const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
-            if (fleet) {
-                this.showFleetLaunch(origin, destination, shipsToSend);
-                
-                // Show fleet launched notification
-                if (UI && UI.showFleetLaunched) {
-                    UI.showFleetLaunched(
-                        origin.assignedKey || `P${origin.id}`,
-                        destination.assignedKey || `P${destination.id}`,
-                        shipsToSend
+            } else {
+                // Not enough ships
+                if (UI && UI.showNotification) {
+                    UI.showNotification(
+                        `No hay suficientes naves en planeta ${origin.assignedKey}`,
+                        'warning',
+                        3000
                     );
                 }
             }
@@ -389,7 +372,7 @@ const InputManager = {
             statusEl.textContent = `✅ ${ships} naves enviadas: ${origin.assignedKey} → ${destination.assignedKey}`;
             
             setTimeout(() => {
-                statusEl.textContent = 'Evolution Action 01! Drag & Drop para enviar naves';
+                statusEl.textContent = '¡Conquista todos los planetas! (Evolution: Building System)';
             }, 3000);
         }
     },
@@ -410,15 +393,20 @@ const InputManager = {
             }
         }
         
-        // Add resource cost information for player planets
+        // Add production information for player planets
         if (planet.owner === 'player' && typeof ResourceManager !== 'undefined') {
-            const shipsToSend = Math.floor(planet.ships * 0.5);
-            if (shipsToSend > 0) {
-                const cost = FleetManager.getShipCost(shipsToSend);
-                const canAfford = ResourceManager.canAffordShip(shipsToSend);
-                const costColor = canAfford ? '#00cc88' : '#cc4400';
-                info += `<br><span style="color: ${costColor}">Costo envío: ${cost} metal</span>`;
+            const resourceInfo = ResourceManager.getPlanetResourceInfo(planet);
+            if (resourceInfo) {
+                info += `<br>Producción: ${resourceInfo.metal.generation}/min Metal`;
+                if (resourceInfo.energy.generation > 0) {
+                    info += `<br>Energía: +${resourceInfo.energy.generation}/min`;
+                }
             }
+        }
+        
+        // Action 02: Add building info hint for player planets
+        if (planet.owner === 'player') {
+            info += `<br><small style="color: #00ff88">Click derecho para construir edificios</small>`;
         }
         
         if (UI && UI.showTooltip) {
