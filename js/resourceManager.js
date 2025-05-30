@@ -1,4 +1,4 @@
-// Resource Manager - Action 02 Extension - Metal + Energy System
+// Resource Manager - Action 02 Extension - FIXED
 // Manages metal and energy resource generation, storage, and consumption
 
 const ResourceManager = {
@@ -88,9 +88,6 @@ const ResourceManager = {
         if (totalEnergyGeneration > 0) {
             this.addEnergy(totalEnergyGeneration);
         }
-
-        // Update UI
-        this.updateUI();
     },
 
     // Get metal generation rate for a planet (per minute)
@@ -136,6 +133,11 @@ const ResourceManager = {
         return GameEngine.planets
             .filter(p => p.owner === 'player')
             .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);
+    },
+
+    // LEGACY COMPATIBILITY - Add the old method name that was causing the error
+    getTotalStorageCapacity() {
+        return this.getTotalMetalStorageCapacity();
     },
 
     // Metal manipulation methods
@@ -204,7 +206,7 @@ const ResourceManager = {
         return false;
     },
 
-    // Legacy methods for compatibility
+    // Legacy methods for compatibility with Action 01 code
     removeMetal(amount) {
         return this.spendMetal(amount);
     },
