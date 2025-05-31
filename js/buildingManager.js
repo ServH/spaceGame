@@ -1,4 +1,4 @@
-// Building Manager - Action 02 Building System Core
+// Building Manager - Action 02 Building System Core with Event System
 const BuildingManager = {
     
     initialized: false,
@@ -11,6 +11,14 @@ const BuildingManager = {
         
         // Start update loop
         this.startUpdateLoop();
+    },
+
+    // Emit building events for feedback system
+    emitBuildingEvent(eventType, planet, buildingId) {
+        const event = new CustomEvent(eventType, {
+            detail: { planet, buildingId }
+        });
+        document.dispatchEvent(event);
     },
 
     // Start construction of a building
@@ -70,6 +78,9 @@ const BuildingManager = {
 
         console.log(`🏗️ Started construction of ${building.name} on planet ${planet.id}`);
         
+        // Emit event for feedback system
+        this.emitBuildingEvent('buildingStarted', planet, buildingId);
+        
         // Update UI
         this.updateBuildingUI(planet);
         
@@ -103,6 +114,9 @@ const BuildingManager = {
 
         console.log(`🏗️ Cancelled construction of ${building.name}, refunded 50%`);
         
+        // Emit event for feedback system
+        this.emitBuildingEvent('buildingCancelled', planet, buildingId);
+        
         // Update UI
         this.updateBuildingUI(planet);
         
@@ -133,6 +147,9 @@ const BuildingManager = {
         Buildings.applyEffects(planet, buildingId);
 
         console.log(`✅ Completed construction of ${building.name} on planet ${planet.id}`);
+        
+        // Emit event for feedback system
+        this.emitBuildingEvent('buildingCompleted', planet, buildingId);
         
         // Show completion effect
         this.showCompletionEffect(planet, buildingId);
@@ -174,8 +191,8 @@ const BuildingManager = {
     getPlayerResources() {
         if (typeof ResourceManager !== 'undefined') {
             return {
-                metal: ResourceManager.getPlayerMetal(),
-                energy: ResourceManager.getPlayerEnergy()
+                metal: ResourceManager.getMetal(),
+                energy: ResourceManager.getEnergy()
             };
         }
         
@@ -309,6 +326,96 @@ const BuildingManager = {
         }
     },
 
+    // AI building methods for balanced gameplay
+    evaluateBuildingForAI(planet, buildingId) {
+        const building = Buildings.getDefinition(buildingId);
+        if (!building) return 0;
+
+        let priority = 0;
+
+        // Base priority by building type
+        switch (buildingId) {
+            case 'shipyard':
+                // Higher priority if planet has many ships
+                priority = (planet.ships / planet.capacity) * 50 + 30;
+                break;
+            case 'mining_complex':
+                // Higher priority early game or if low on metal
+                if (planet.aiMetal < 150) priority = 70;
+                else priority = 40;
+                break;
+            case 'research_lab':
+                // Lower priority initially, higher in late game
+                priority = 25;
+                break;
+        }
+
+        // Reduce priority if already exists
+        if (planet.buildings && planet.buildings[buildingId]) {
+            priority = 0;
+        }
+
+        return priority;
+    },
+
+    // AI decides what to build
+    getAIBuildingChoice(planet) {
+        if (!planet || planet.owner !== 'ai') return null;
+        if (!Buildings.canBuildOnPlanet('shipyard', planet)) return null; // Already at max buildings
+
+        const aiResources = { metal: planet.aiMetal || 0, energy: 100 }; // AI has infinite energy for now
+        const choices = [];
+
+        Buildings.getAllTypes().forEach(buildingId => {
+            if (Buildings.canAfford(buildingId, aiResources) && Buildings.canBuildOnPlanet(buildingId, planet)) {
+                const priority = this.evaluateBuildingForAI(planet, buildingId);
+                if (priority > 0) {
+                    choices.push({ buildingId, priority });
+                }
+            }
+        });
+
+        if (choices.length === 0) return null;
+
+        // Sort by priority and add some randomness
+        choices.sort((a, b) => b.priority - a.priority);
+        
+        // Pick from top 2 choices with some randomness
+        const topChoices = choices.slice(0, 2);
+        return topChoices[Math.floor(Math.random() * topChoices.length)];
+    },
+
+    // AI construction logic
+    tryAIConstruction(planet) {
+        if (!planet || planet.owner !== 'ai') return false;
+
+        const choice = this.getAIBuildingChoice(planet);
+        if (!choice) return false;
+
+        const building = Buildings.getDefinition(choice.buildingId);
+        if (!building) return false;
+
+        // Check if AI can afford (simplified - just metal cost)
+        if (planet.aiMetal < building.cost.metal) return false;
+
+        // Start AI construction
+        if (!planet.buildings) planet.buildings = {};
+
+        planet.buildings[choice.buildingId] = {
+            level: 0,
+            constructing: true,
+            progress: 0,
+            startTime: Date.now(),
+            buildTime: building.buildTime * 0.8 // AI builds 20% faster
+        };
+
+        // Pay cost
+        planet.aiMetal -= building.cost.metal;
+
+        console.log(`🤖 AI started construction of ${building.name} on planet ${planet.id}`);
+        return true;
+    },
+
     // Debug: Show all constructions
     debugConstructions() {
         if (!GameEngine.planets) return;
@@ -322,6 +429,7 @@ const BuildingManager = {
                     
                     constructions.push({
                         Planet: planet.id,
+                        Owner: planet.owner,
                         Building: building.name,
                         Status: buildingData.constructing ? 'Building' : 'Complete',
                         Progress: `${Math.round(buildingData.progress)}%`,
