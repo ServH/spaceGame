@@ -1,1 +1,385 @@
-// Resource Manager - ENERGY AS FUEL SYSTEM V2.0\n// Metal = Construction, Energy = Movement Fuel\nconst ResourceManager = {\n    // Resource tracking\n    resources: {\n        metal: 0,\n        energy: 0\n    },\n    \n    // AI energy tracking (unified system)\n    aiEnergy: 0,\n    \n    // Resource generation tracking\n    lastUpdate: 0,\n    updateInterval: 1000,\n    \n    // ENERGY FUEL SYSTEM: New configuration\n    config: {\n        metal: {\n            // Metal only for construction\n            generationRates: {\n                small: 18.0,  // Small planets: 18 metal/min\n                medium: 27.0, // Medium planets: 27 metal/min\n                large: 36.0   // Large planets: 36 metal/min\n            },\n            storageMultiplier: 3.0, // Less storage needed\n            shipCost: 0 // NO cost for movement\n        },\n        energy: {\n            // Energy for movement fuel\n            generationRates: {\n                small: 9.0,   // Small planets: 9 energy/min\n                medium: 12.0, // Medium planets: 12 energy/min\n                large: 15.0   // Large planets: 15 energy/min\n            },\n            storageMultiplier: 4.0, // High storage for fuel\n            shipCost: 1.5, // Base energy cost per ship\n            researchLabBonus: 6.0 // Research labs generate +6 energy/min\n        }\n    },\n\n    // ENERGY FUEL: Starting resources rebalanced\n    init() {\n        this.resources.metal = 75;  // Less metal (construction only)\n        this.resources.energy = 90; // More energy (fuel)\n        this.aiEnergy = 90;         // AI starts with same energy\n        this.lastUpdate = Date.now();\n        console.log('⚡ Resource Manager initialized - ENERGY AS FUEL SYSTEM');\n        console.log(`Starting resources: ${this.resources.metal} metal, ${this.resources.energy} energy`);\n    },\n\n    // Main update loop\n    update() {\n        const now = Date.now();\n        if (now - this.lastUpdate >= this.updateInterval) {\n            this.generateResources();\n            this.updateAIEnergy();\n            this.lastUpdate = now;\n        }\n    },\n\n    // ENERGY FUEL: Resource generation\n    generateResources() {\n        if (!GameEngine || !GameEngine.planets) return;\n\n        let totalMetalGeneration = 0;\n        let totalEnergyGeneration = 0;\n        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');\n\n        playerPlanets.forEach(planet => {\n            // Metal generation (construction only)\n            const metalGeneration = this.getPlanetMetalGeneration(planet);\n            const maxMetalStorage = this.getTotalMetalStorageCapacity();\n\n            if (this.resources.metal < maxMetalStorage) {\n                const metalPerSecond = metalGeneration / 60;\n                const actualMetalGeneration = Math.min(metalPerSecond, maxMetalStorage - this.resources.metal);\n                totalMetalGeneration += actualMetalGeneration;\n            }\n\n            // Energy generation (fuel)\n            const energyGeneration = this.getPlanetEnergyGeneration(planet);\n            const maxEnergyStorage = this.getTotalEnergyStorageCapacity();\n\n            if (this.resources.energy < maxEnergyStorage) {\n                const energyPerSecond = energyGeneration / 60;\n                const actualEnergyGeneration = Math.min(energyPerSecond, maxEnergyStorage - this.resources.energy);\n                totalEnergyGeneration += actualEnergyGeneration;\n            }\n        });\n\n        // Apply generation\n        if (totalMetalGeneration > 0) {\n            this.addMetal(totalMetalGeneration);\n        }\n        \n        if (totalEnergyGeneration > 0) {\n            this.addEnergy(totalEnergyGeneration);\n        }\n    },\n\n    // ENERGY FUEL: AI energy generation (same rules as player)\n    updateAIEnergy() {\n        if (!GameEngine || !GameEngine.planets) return;\n\n        let totalAIEnergyGeneration = 0;\n        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');\n        const maxAIEnergyStorage = this.getAIEnergyStorageCapacity();\n\n        aiPlanets.forEach(planet => {\n            const energyGeneration = this.getPlanetEnergyGeneration(planet);\n            if (this.aiEnergy < maxAIEnergyStorage) {\n                const energyPerSecond = energyGeneration / 60;\n                const actualGeneration = Math.min(energyPerSecond, maxAIEnergyStorage - this.aiEnergy);\n                totalAIEnergyGeneration += actualGeneration;\n            }\n        });\n\n        if (totalAIEnergyGeneration > 0) {\n            this.aiEnergy = Math.min(this.aiEnergy + totalAIEnergyGeneration, maxAIEnergyStorage);\n        }\n    },\n\n    // ENERGY FUEL: Metal generation (construction only)\n    getPlanetMetalGeneration(planet) {\n        const capacity = planet.capacity;\n        let rate;\n\n        if (capacity <= 25) {\n            rate = this.config.metal.generationRates.small;\n        } else if (capacity <= 45) {\n            rate = this.config.metal.generationRates.medium;\n        } else {\n            rate = this.config.metal.generationRates.large;\n        }\n\n        // Apply building multipliers\n        const multiplier = planet.metalGenerationMultiplier || 1.0;\n        return rate * multiplier;\n    },\n\n    // ENERGY FUEL: Energy generation (fuel + research labs)\n    getPlanetEnergyGeneration(planet) {\n        const capacity = planet.capacity;\n        let baseRate;\n\n        if (capacity <= 25) {\n            baseRate = this.config.energy.generationRates.small;\n        } else if (capacity <= 45) {\n            baseRate = this.config.energy.generationRates.medium;\n        } else {\n            baseRate = this.config.energy.generationRates.large;\n        }\n\n        // CRITICAL: Research Lab bonus\n        let researchLabBonus = 0;\n        if (planet.buildings && planet.buildings.research_lab && !planet.buildings.research_lab.constructing) {\n            researchLabBonus = this.config.energy.researchLabBonus;\n        }\n\n        return baseRate + researchLabBonus;\n    },\n\n    // Storage capacity calculations\n    getTotalMetalStorageCapacity() {\n        if (!GameEngine || !GameEngine.planets) return 300;\n        return GameEngine.planets\n            .filter(p => p.owner === 'player')\n            .reduce((total, planet) => total + (planet.capacity * this.config.metal.storageMultiplier), 0);\n    },\n\n    getTotalEnergyStorageCapacity() {\n        if (!GameEngine || !GameEngine.planets) return 400;\n        return GameEngine.planets\n            .filter(p => p.owner === 'player')\n            .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);\n    },\n\n    getAIEnergyStorageCapacity() {\n        if (!GameEngine || !GameEngine.planets) return 400;\n        return GameEngine.planets\n            .filter(p => p.owner === 'ai')\n            .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);\n    },\n\n    // ENERGY FUEL: Movement cost calculation\n    calculateMovementCost(ships, distance) {\n        return CONFIG.calculateMovementCost(ships, distance);\n    },\n\n    // ENERGY FUEL: Check if player can afford movement\n    canAffordMovement(ships, distance) {\n        const cost = this.calculateMovementCost(ships, distance);\n        return this.resources.energy >= cost;\n    },\n\n    // ENERGY FUEL: Check if AI can afford movement\n    canAffordAIMovement(ships, distance) {\n        const cost = this.calculateMovementCost(ships, distance);\n        return this.aiEnergy >= cost;\n    },\n\n    // ENERGY FUEL: Pay for player movement\n    payForMovement(ships, distance) {\n        const cost = this.calculateMovementCost(ships, distance);\n        if (this.canAffordMovement(ships, distance)) {\n            this.spendEnergy(cost);\n            console.log(`⚡ Player movement: ${ships} ships, ${distance.toFixed(0)}px = ${cost} energy`);\n            return true;\n        }\n        return false;\n    },\n\n    // ENERGY FUEL: Pay for AI movement\n    payForAIMovement(ships, distance) {\n        const cost = this.calculateMovementCost(ships, distance);\n        if (this.canAffordAIMovement(ships, distance)) {\n            this.aiEnergy -= cost;\n            console.log(`🤖 AI movement: ${ships} ships, ${distance.toFixed(0)}px = ${cost} energy`);\n            return true;\n        }\n        return false;\n    },\n\n    // Resource manipulation methods\n    addMetal(amount) {\n        const maxCapacity = this.getTotalMetalStorageCapacity();\n        this.resources.metal = Math.min(this.resources.metal + amount, maxCapacity);\n        this.updateUI();\n    },\n\n    spendMetal(amount) {\n        if (this.resources.metal >= amount) {\n            this.resources.metal -= amount;\n            this.updateUI();\n            return true;\n        }\n        return false;\n    },\n\n    getMetal() {\n        return Math.floor(this.resources.metal);\n    },\n\n    addEnergy(amount) {\n        const maxCapacity = this.getTotalEnergyStorageCapacity();\n        this.resources.energy = Math.min(this.resources.energy + amount, maxCapacity);\n        this.updateUI();\n    },\n\n    spendEnergy(amount) {\n        if (this.resources.energy >= amount) {\n            this.resources.energy -= amount;\n            this.updateUI();\n            return true;\n        }\n        return false;\n    },\n\n    getEnergy() {\n        return Math.floor(this.resources.energy);\n    },\n\n    getAIEnergy() {\n        return Math.floor(this.aiEnergy);\n    },\n\n    // Legacy compatibility\n    getPlayerMetal() { return this.getMetal(); }\n    getPlayerEnergy() { return this.getEnergy(); }\n    removeMetal(amount) { return this.spendMetal(amount); }\n    canAffordMetal(amount) { return this.resources.metal >= amount; }\n\n    // ENERGY FUEL: Legacy ship cost methods (now free)\n    canAffordShip(shipCount = 1) {\n        return true; // Ships are free to send (energy cost handled separately)\n    },\n\n    payForShips(shipCount = 1) {\n        return true; // No metal cost for sending\n    },\n\n    // UI Updates\n    updateUI() {\n        this.updateMainDisplays();\n        \n        if (typeof ResourceUI !== 'undefined' && ResourceUI.update) {\n            ResourceUI.update();\n        }\n    },\n\n    updateMainDisplays() {\n        const resourceDisplay = document.getElementById('mainResourceDisplay');\n        \n        if (resourceDisplay) {\n            const metalRate = this.getTotalMetalGeneration();\n            const energyRate = this.getTotalEnergyGeneration();\n            \n            resourceDisplay.innerHTML = `\n                🔩 Metal: ${this.getMetal()} (+${metalRate.toFixed(1)}/min) | \n                ⚡ Energy: ${this.getEnergy()} (+${energyRate.toFixed(1)}/min)\n            `;\n        }\n    },\n\n    // Get total generation rates\n    getTotalMetalGeneration() {\n        if (!GameEngine || !GameEngine.planets) return 0;\n        return GameEngine.planets\n            .filter(p => p.owner === 'player')\n            .reduce((total, planet) => total + this.getPlanetMetalGeneration(planet), 0);\n    },\n\n    getTotalEnergyGeneration() {\n        if (!GameEngine || !GameEngine.planets) return 0;\n        return GameEngine.planets\n            .filter(p => p.owner === 'player')\n            .reduce((total, planet) => total + this.getPlanetEnergyGeneration(planet), 0);\n    },\n\n    // Get movement cost info for UI\n    getMovementCostInfo(ships, distance) {\n        return CONFIG.getMovementCostInfo(ships, distance);\n    },\n\n    // Planet resource info for tooltips\n    getPlanetResourceInfo(planet) {\n        if (planet.owner !== 'player') return null;\n\n        const metalGeneration = this.getPlanetMetalGeneration(planet);\n        const energyGeneration = this.getPlanetEnergyGeneration(planet);\n        \n        return {\n            metal: { generation: metalGeneration.toFixed(1) },\n            energy: { generation: energyGeneration.toFixed(1) }\n        };\n    },\n\n    // Reset\n    reset() {\n        this.resources.metal = 75;\n        this.resources.energy = 90;\n        this.aiEnergy = 90;\n        this.lastUpdate = Date.now();\n        this.updateUI();\n        console.log('⚡ Resource Manager reset - ENERGY AS FUEL SYSTEM');\n    },\n\n    // Debug methods\n    debugInfo() {\n        const info = {\n            'Player Metal': this.getMetal(),\n            'Player Energy': this.getEnergy(),\n            'AI Energy': this.getAIEnergy(),\n            'Metal Gen/min': this.getTotalMetalGeneration().toFixed(1),\n            'Energy Gen/min': this.getTotalEnergyGeneration().toFixed(1),\n            'Player Planets': GameEngine.planets ? GameEngine.planets.filter(p => p.owner === 'player').length : 0,\n            'AI Planets': GameEngine.planets ? GameEngine.planets.filter(p => p.owner === 'ai').length : 0\n        };\n        \n        console.table(info);\n        return info;\n    }\n};\n\n// Export for global access\nwindow.ResourceManager = ResourceManager;"
+// Resource Manager - ENERGY AS FUEL SYSTEM V2.0
+// Metal = Construction, Energy = Movement Fuel
+const ResourceManager = {
+    // Resource tracking
+    resources: {
+        metal: 0,
+        energy: 0
+    },
+    
+    // AI energy tracking (unified system)
+    aiEnergy: 0,
+    
+    // Resource generation tracking
+    lastUpdate: 0,
+    updateInterval: 1000,
+    
+    // ENERGY FUEL SYSTEM: New configuration
+    config: {
+        metal: {
+            // Metal only for construction
+            generationRates: {
+                small: 18.0,  // Small planets: 18 metal/min
+                medium: 27.0, // Medium planets: 27 metal/min
+                large: 36.0   // Large planets: 36 metal/min
+            },
+            storageMultiplier: 3.0, // Less storage needed
+            shipCost: 0 // NO cost for movement
+        },
+        energy: {
+            // Energy for movement fuel
+            generationRates: {
+                small: 9.0,   // Small planets: 9 energy/min
+                medium: 12.0, // Medium planets: 12 energy/min
+                large: 15.0   // Large planets: 15 energy/min
+            },
+            storageMultiplier: 4.0, // High storage for fuel
+            shipCost: 1.5, // Base energy cost per ship
+            researchLabBonus: 6.0 // Research labs generate +6 energy/min
+        }
+    },
+
+    // ENERGY FUEL: Starting resources rebalanced
+    init() {
+        this.resources.metal = 75;  // Less metal (construction only)
+        this.resources.energy = 90; // More energy (fuel)
+        this.aiEnergy = 90;         // AI starts with same energy
+        this.lastUpdate = Date.now();
+        console.log('⚡ Resource Manager initialized - ENERGY AS FUEL SYSTEM');
+        console.log(`Starting resources: ${this.resources.metal} metal, ${this.resources.energy} energy`);
+    },
+
+    // Main update loop
+    update() {
+        const now = Date.now();
+        if (now - this.lastUpdate >= this.updateInterval) {
+            this.generateResources();
+            this.updateAIEnergy();
+            this.lastUpdate = now;
+        }
+    },
+
+    // ENERGY FUEL: Resource generation
+    generateResources() {
+        if (!GameEngine || !GameEngine.planets) return;
+
+        let totalMetalGeneration = 0;
+        let totalEnergyGeneration = 0;
+        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');
+
+        playerPlanets.forEach(planet => {
+            // Metal generation (construction only)
+            const metalGeneration = this.getPlanetMetalGeneration(planet);
+            const maxMetalStorage = this.getTotalMetalStorageCapacity();
+
+            if (this.resources.metal < maxMetalStorage) {
+                const metalPerSecond = metalGeneration / 60;
+                const actualMetalGeneration = Math.min(metalPerSecond, maxMetalStorage - this.resources.metal);
+                totalMetalGeneration += actualMetalGeneration;
+            }
+
+            // Energy generation (fuel)
+            const energyGeneration = this.getPlanetEnergyGeneration(planet);
+            const maxEnergyStorage = this.getTotalEnergyStorageCapacity();
+
+            if (this.resources.energy < maxEnergyStorage) {
+                const energyPerSecond = energyGeneration / 60;
+                const actualEnergyGeneration = Math.min(energyPerSecond, maxEnergyStorage - this.resources.energy);
+                totalEnergyGeneration += actualEnergyGeneration;
+            }
+        });
+
+        // Apply generation
+        if (totalMetalGeneration > 0) {
+            this.addMetal(totalMetalGeneration);
+        }
+        
+        if (totalEnergyGeneration > 0) {
+            this.addEnergy(totalEnergyGeneration);
+        }
+    },
+
+    // ENERGY FUEL: AI energy generation (same rules as player)
+    updateAIEnergy() {
+        if (!GameEngine || !GameEngine.planets) return;
+
+        let totalAIEnergyGeneration = 0;
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');
+        const maxAIEnergyStorage = this.getAIEnergyStorageCapacity();
+
+        aiPlanets.forEach(planet => {
+            const energyGeneration = this.getPlanetEnergyGeneration(planet);
+            if (this.aiEnergy < maxAIEnergyStorage) {
+                const energyPerSecond = energyGeneration / 60;
+                const actualGeneration = Math.min(energyPerSecond, maxAIEnergyStorage - this.aiEnergy);
+                totalAIEnergyGeneration += actualGeneration;
+            }
+        });
+
+        if (totalAIEnergyGeneration > 0) {
+            this.aiEnergy = Math.min(this.aiEnergy + totalAIEnergyGeneration, maxAIEnergyStorage);
+        }
+    },
+
+    // ENERGY FUEL: Metal generation (construction only)
+    getPlanetMetalGeneration(planet) {
+        const capacity = planet.capacity;
+        let rate;
+
+        if (capacity <= 25) {
+            rate = this.config.metal.generationRates.small;
+        } else if (capacity <= 45) {
+            rate = this.config.metal.generationRates.medium;
+        } else {
+            rate = this.config.metal.generationRates.large;
+        }
+
+        // Apply building multipliers
+        const multiplier = planet.metalGenerationMultiplier || 1.0;
+        return rate * multiplier;
+    },
+
+    // ENERGY FUEL: Energy generation (fuel + research labs)
+    getPlanetEnergyGeneration(planet) {
+        const capacity = planet.capacity;
+        let baseRate;
+
+        if (capacity <= 25) {
+            baseRate = this.config.energy.generationRates.small;
+        } else if (capacity <= 45) {
+            baseRate = this.config.energy.generationRates.medium;
+        } else {
+            baseRate = this.config.energy.generationRates.large;
+        }
+
+        // CRITICAL: Research Lab bonus
+        let researchLabBonus = 0;
+        if (planet.buildings && planet.buildings.research_lab && !planet.buildings.research_lab.constructing) {
+            researchLabBonus = this.config.energy.researchLabBonus;
+        }
+
+        return baseRate + researchLabBonus;
+    },
+
+    // Storage capacity calculations
+    getTotalMetalStorageCapacity() {
+        if (!GameEngine || !GameEngine.planets) return 300;
+        return GameEngine.planets
+            .filter(p => p.owner === 'player')
+            .reduce((total, planet) => total + (planet.capacity * this.config.metal.storageMultiplier), 0);
+    },
+
+    getTotalEnergyStorageCapacity() {
+        if (!GameEngine || !GameEngine.planets) return 400;
+        return GameEngine.planets
+            .filter(p => p.owner === 'player')
+            .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);
+    },
+
+    getAIEnergyStorageCapacity() {
+        if (!GameEngine || !GameEngine.planets) return 400;
+        return GameEngine.planets
+            .filter(p => p.owner === 'ai')
+            .reduce((total, planet) => total + (planet.capacity * this.config.energy.storageMultiplier), 0);
+    },
+
+    // ENERGY FUEL: Movement cost calculation
+    calculateMovementCost(ships, distance) {
+        return CONFIG.calculateMovementCost(ships, distance);
+    },
+
+    // ENERGY FUEL: Check if player can afford movement
+    canAffordMovement(ships, distance) {
+        const cost = this.calculateMovementCost(ships, distance);
+        return this.resources.energy >= cost;
+    },
+
+    // ENERGY FUEL: Check if AI can afford movement
+    canAffordAIMovement(ships, distance) {
+        const cost = this.calculateMovementCost(ships, distance);
+        return this.aiEnergy >= cost;
+    },
+
+    // ENERGY FUEL: Pay for player movement
+    payForMovement(ships, distance) {
+        const cost = this.calculateMovementCost(ships, distance);
+        if (this.canAffordMovement(ships, distance)) {
+            this.spendEnergy(cost);
+            console.log(`⚡ Player movement: ${ships} ships, ${distance.toFixed(0)}px = ${cost} energy`);
+            return true;
+        }
+        return false;
+    },
+
+    // ENERGY FUEL: Pay for AI movement
+    payForAIMovement(ships, distance) {
+        const cost = this.calculateMovementCost(ships, distance);
+        if (this.canAffordAIMovement(ships, distance)) {
+            this.aiEnergy -= cost;
+            console.log(`🤖 AI movement: ${ships} ships, ${distance.toFixed(0)}px = ${cost} energy`);
+            return true;
+        }
+        return false;
+    },
+
+    // Resource manipulation methods
+    addMetal(amount) {
+        const maxCapacity = this.getTotalMetalStorageCapacity();
+        this.resources.metal = Math.min(this.resources.metal + amount, maxCapacity);
+        this.updateUI();
+    },
+
+    spendMetal(amount) {
+        if (this.resources.metal >= amount) {
+            this.resources.metal -= amount;
+            this.updateUI();
+            return true;
+        }
+        return false;
+    },
+
+    getMetal() {
+        return Math.floor(this.resources.metal);
+    },
+
+    addEnergy(amount) {
+        const maxCapacity = this.getTotalEnergyStorageCapacity();
+        this.resources.energy = Math.min(this.resources.energy + amount, maxCapacity);
+        this.updateUI();
+    },
+
+    spendEnergy(amount) {
+        if (this.resources.energy >= amount) {
+            this.resources.energy -= amount;
+            this.updateUI();
+            return true;
+        }
+        return false;
+    },
+
+    getEnergy() {
+        return Math.floor(this.resources.energy);
+    },
+
+    getAIEnergy() {
+        return Math.floor(this.aiEnergy);
+    },
+
+    // Legacy compatibility
+    getPlayerMetal() { return this.getMetal(); },
+    getPlayerEnergy() { return this.getEnergy(); },
+    removeMetal(amount) { return this.spendMetal(amount); },
+    canAffordMetal(amount) { return this.resources.metal >= amount; },
+
+    // ENERGY FUEL: Legacy ship cost methods (now free)
+    canAffordShip(shipCount = 1) {
+        return true; // Ships are free to send (energy cost handled separately)
+    },
+
+    payForShips(shipCount = 1) {
+        return true; // No metal cost for sending
+    },
+
+    // UI Updates
+    updateUI() {
+        this.updateMainDisplays();
+        
+        if (typeof ResourceUI !== 'undefined' && ResourceUI.update) {
+            ResourceUI.update();
+        }
+    },
+
+    updateMainDisplays() {
+        const resourceDisplay = document.getElementById('mainResourceDisplay');
+        
+        if (resourceDisplay) {
+            const metalRate = this.getTotalMetalGeneration();
+            const energyRate = this.getTotalEnergyGeneration();
+            
+            resourceDisplay.innerHTML = `
+                🔩 Metal: ${this.getMetal()} (+${metalRate.toFixed(1)}/min) | 
+                ⚡ Energy: ${this.getEnergy()} (+${energyRate.toFixed(1)}/min)
+            `;
+        }
+    },
+
+    // Get total generation rates
+    getTotalMetalGeneration() {
+        if (!GameEngine || !GameEngine.planets) return 0;
+        return GameEngine.planets
+            .filter(p => p.owner === 'player')
+            .reduce((total, planet) => total + this.getPlanetMetalGeneration(planet), 0);
+    },
+
+    getTotalEnergyGeneration() {
+        if (!GameEngine || !GameEngine.planets) return 0;
+        return GameEngine.planets
+            .filter(p => p.owner === 'player')
+            .reduce((total, planet) => total + this.getPlanetEnergyGeneration(planet), 0);
+    },
+
+    // Get total generation rates for display
+    getGenerationRates() {
+        return {
+            metal: this.getTotalMetalGeneration(),
+            energy: this.getTotalEnergyGeneration()
+        };
+    },
+
+    // Get movement cost info for UI
+    getMovementCostInfo(ships, distance) {
+        return CONFIG.getMovementCostInfo(ships, distance);
+    },
+
+    // Planet resource info for tooltips
+    getPlanetResourceInfo(planet) {
+        if (planet.owner !== 'player') return null;
+
+        const metalGeneration = this.getPlanetMetalGeneration(planet);
+        const energyGeneration = this.getPlanetEnergyGeneration(planet);
+        
+        return {
+            metal: { generation: metalGeneration.toFixed(1) },
+            energy: { generation: energyGeneration.toFixed(1) }
+        };
+    },
+
+    // Reset
+    reset() {
+        this.resources.metal = 75;
+        this.resources.energy = 90;
+        this.aiEnergy = 90;
+        this.lastUpdate = Date.now();
+        this.updateUI();
+        console.log('⚡ Resource Manager reset - ENERGY AS FUEL SYSTEM');
+    },
+
+    // Debug methods
+    debugInfo() {
+        const info = {
+            'Player Metal': this.getMetal(),
+            'Player Energy': this.getEnergy(),
+            'AI Energy': this.getAIEnergy(),
+            'Metal Gen/min': this.getTotalMetalGeneration().toFixed(1),
+            'Energy Gen/min': this.getTotalEnergyGeneration().toFixed(1),
+            'Player Planets': GameEngine.planets ? GameEngine.planets.filter(p => p.owner === 'player').length : 0,
+            'AI Planets': GameEngine.planets ? GameEngine.planets.filter(p => p.owner === 'ai').length : 0
+        };
+        
+        console.table(info);
+        return info;
+    },
+
+    debugAddMetal(amount) {
+        this.addMetal(amount);
+        console.log(`🔧 Debug: Added ${amount} metal. Total: ${this.getMetal()}`);
+    },
+
+    debugAddEnergy(amount) {
+        this.addEnergy(amount);
+        console.log(`⚡ Debug: Added ${amount} energy. Total: ${this.getEnergy()}`);
+    }
+};
+
+// Export for global access
+window.ResourceManager = ResourceManager;
