@@ -1,4 +1,4 @@
-// Planet class - OPCIÓN A GALCON - Ships regenerate FREE, sending costs metal
+// Planet class - OPCIÓN A GALCON + Building Visual Indicators
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -39,6 +39,7 @@ class Planet {
         this.element = null;
         this.textElement = null;
         this.keyElement = null;
+        this.buildingIndicators = []; // For building visual indicators
         this.assignedKey = null;
         this._currentlyHovered = false;
         
@@ -111,6 +112,82 @@ class Planet {
             this.element.removeAttribute('stroke');
             this.element.removeAttribute('stroke-width');
         }
+
+        // Update building indicators
+        this.updateBuildingIndicators();
+    }
+
+    // Building visual indicators - MVP implementation
+    updateBuildingIndicators() {
+        // Clear existing indicators
+        this.buildingIndicators.forEach(indicator => indicator.remove());
+        this.buildingIndicators = [];
+
+        if (!this.buildings || Object.keys(this.buildings).length === 0) return;
+
+        const svg = document.getElementById('gameCanvas');
+        if (!svg) return;
+
+        let indicatorIndex = 0;
+        const indicatorSize = 6;
+        const indicatorDistance = this.radius + 12;
+
+        Object.keys(this.buildings).forEach(buildingId => {
+            const buildingData = this.buildings[buildingId];
+            const building = Buildings ? Buildings.getDefinition(buildingId) : null;
+
+            if (!building) return;
+
+            // Calculate position around planet
+            const angle = (indicatorIndex * 120) * (Math.PI / 180); // 120 degrees apart
+            const indicatorX = this.x + Math.cos(angle) * indicatorDistance;
+            const indicatorY = this.y + Math.sin(angle) * indicatorDistance;
+
+            // Create indicator circle
+            const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            indicator.setAttribute('cx', indicatorX);
+            indicator.setAttribute('cy', indicatorY);
+            indicator.setAttribute('r', indicatorSize);
+            
+            if (buildingData.constructing) {
+                // Construction in progress - pulsing yellow
+                indicator.setAttribute('fill', '#ffaa00');
+                indicator.setAttribute('stroke', '#ffffff');
+                indicator.setAttribute('stroke-width', '1');
+                indicator.setAttribute('opacity', '0.8');
+                
+                // Add animation for construction
+                const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('attributeName', 'opacity');
+                animate.setAttribute('values', '0.4;1.0;0.4');
+                animate.setAttribute('dur', '1.5s');
+                animate.setAttribute('repeatCount', 'indefinite');
+                indicator.appendChild(animate);
+            } else {
+                // Completed building - solid colored
+                indicator.setAttribute('fill', building.visual.color);
+                indicator.setAttribute('stroke', '#ffffff');
+                indicator.setAttribute('stroke-width', '1');
+                indicator.setAttribute('opacity', '1.0');
+            }
+
+            // Add building icon as text
+            const iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            iconText.setAttribute('x', indicatorX);
+            iconText.setAttribute('y', indicatorY + 2);
+            iconText.setAttribute('text-anchor', 'middle');
+            iconText.setAttribute('font-size', '8');
+            iconText.setAttribute('fill', 'white');
+            iconText.textContent = building.icon;
+            
+            svg.appendChild(indicator);
+            svg.appendChild(iconText);
+            
+            this.buildingIndicators.push(indicator);
+            this.buildingIndicators.push(iconText);
+
+            indicatorIndex++;
+        });
     }
 
     update(deltaTime) {
@@ -157,13 +234,17 @@ class Planet {
 
     // OPCIÓN A: AI metal generation scaled for 1 metal per ship cost
     getAIMetalGeneration() {
+        let baseGeneration;
         if (this.capacity <= 30) {
-            return 15; // Small planets: 15 metal every 6s = 150/min
+            baseGeneration = 15; // Small planets: 15 metal every 6s = 150/min
         } else if (this.capacity <= 50) {
-            return 20; // Medium planets: 20 metal every 6s = 200/min  
+            baseGeneration = 20; // Medium planets: 20 metal every 6s = 200/min  
         } else {
-            return 25; // Large planets: 25 metal every 6s = 250/min
+            baseGeneration = 25; // Large planets: 25 metal every 6s = 250/min
         }
+
+        // Apply building multipliers
+        return Math.floor(baseGeneration * this.metalGenerationMultiplier);
     }
 
     // AI metal storage capacity
@@ -271,7 +352,7 @@ class Planet {
         }
     }
 
-    // OPCIÓN A: Enhanced tooltip with free ship regeneration info
+    // OPCIÓN A: Enhanced tooltip with building information
     getTooltipInfo() {
         const ownerName = this.owner === 'player' ? 'Jugador' : 
                          this.owner === 'ai' ? 'IA' : 'Neutral';
@@ -286,16 +367,22 @@ class Planet {
         if (this.owner !== 'neutral') {
             const effectiveRate = (this.shipProductionRate * this.shipProductionMultiplier).toFixed(1);
             info += `<br>Regeneración: ${effectiveRate}/s (GRATIS)`;
+            if (this.shipProductionMultiplier > 1) {
+                info += ` 🏭`;
+            }
         }
 
         // Enhanced resource generation info for player planets
         if (this.owner === 'player' && typeof ResourceManager !== 'undefined') {
             const metalGeneration = ResourceManager.getPlanetMetalGeneration(this);
             info += `<br>Metal: +${metalGeneration.toFixed(1)}/min`;
+            if (this.metalGenerationMultiplier > 1) {
+                info += ` ⛏️`;
+            }
             
             const energyGeneration = ResourceManager.getPlanetEnergyGeneration(this);
             if (energyGeneration > 0) {
-                info += `<br>Energy: +${energyGeneration.toFixed(1)}/min`;
+                info += `<br>Energy: +${energyGeneration.toFixed(1)}/min 🔬`;
             }
         }
 
@@ -309,10 +396,33 @@ class Planet {
             const shipCost = CONFIG.SHIP_COST?.metal || 1;
             info += `<br><span style="color: #ffa500">Envío: ${shipCost} metal/nave</span>`;
         }
+
+        // Building information
+        if (this.buildings && Object.keys(this.buildings).length > 0) {
+            info += `<br><strong>Edificios:</strong>`;
+            Object.keys(this.buildings).forEach(buildingId => {
+                const buildingData = this.buildings[buildingId];
+                const building = Buildings ? Buildings.getDefinition(buildingId) : null;
+                if (building) {
+                    if (buildingData.constructing) {
+                        const progress = Math.round(buildingData.progress);
+                        info += `<br>${building.icon} ${building.name} (${progress}%)`;
+                    } else {
+                        info += `<br>${building.icon} ${building.name} ✅`;
+                    }
+                }
+            });
+        }
         
         // Building hint for player
         if (this.owner === 'player') {
-            info += `<br><small style="color: #00ff88">Click derecho para construir</small>`;
+            const currentBuildings = this.buildings ? Object.keys(this.buildings).length : 0;
+            const maxBuildings = CONFIG.BUILDINGS?.MAX_PER_PLANET || 3;
+            if (currentBuildings < maxBuildings) {
+                info += `<br><small style="color: #00ff88">Click derecho para construir (${currentBuildings}/${maxBuildings})</small>`;
+            } else {
+                info += `<br><small style="color: #ffaa00">Máximo de edificios alcanzado</small>`;
+            }
         }
         
         return info;
@@ -330,6 +440,11 @@ class Planet {
         if (this.element) this.element.remove();
         if (this.textElement) this.textElement.remove();
         if (this.keyElement) this.keyElement.remove();
+        
+        // Clean up building indicators
+        this.buildingIndicators.forEach(indicator => indicator.remove());
+        this.buildingIndicators = [];
+        
         if (window.Animations) Animations.removeAnimation(`conquest_${this.id}`);
     }
 }
