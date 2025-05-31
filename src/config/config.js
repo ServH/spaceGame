@@ -1,166 +1,138 @@
-// Enhanced CONFIG for Energy as Fuel System - V2.0 FUEL UPDATE
+// Game Configuration - Core Settings V2.4
 const CONFIG = {
-    // Game settings
-    GAME: {
-        CANVAS_WIDTH: 800,
-        CANVAS_HEIGHT: 600,
-        TARGET_FPS: 60,
-        UPDATE_INTERVAL: 16,
+    // Core game dimensions and settings
+    CANVAS: {
+        WIDTH: 800,
+        HEIGHT: 600,
+        VIEWBOX: '0 0 800 600'
     },
 
-    // Planet settings - ENERGY FUEL SYSTEM
+    // Planet generation and behavior
     PLANETS: {
         COUNT: 8,
-        MIN_CAPACITY: 20,
-        MAX_CAPACITY: 60,
-        MIN_DISTANCE: 120,
-        PRODUCTION_BASE: 0.5,      // FREE ship regeneration
+        MIN_DISTANCE: 80,
+        RADIUS_MIN: 15,
+        RADIUS_MAX: 35,
+        PRODUCTION_BASE: 0.5,
         PRODUCTION_MULTIPLIER: 0.2,
         CONQUEST_TIME: 2000,
-        
-        // ENERGY FUEL: Better starting resources
-        INITIAL_RESOURCES: {
-            metal: { min: 50, max: 100 },   // Less starting metal (construction only)
-            energy: { min: 60, max: 120 }   // More starting energy (fuel)
-        },
-        
-        // ENERGY FUEL: Resource generation rebalanced
-        BASE_METAL_PRODUCTION: 0.3,  // 18 metal/min per planet (construction only)
-        BASE_ENERGY_PRODUCTION: 0.15, // 9 energy/min per planet (fuel)
-        MAX_RESOURCE_STORAGE: 300,   // Higher energy storage needed
-        
-        // Larger planet capacities for more strategic play
-        CAPACITIES: [20, 25, 30, 40, 50, 60, 70],
-        
-        // FREE ship regeneration (unchanged)
-        SHIP_PRODUCTION_RATE: 0.5,   // 1 ship every 2 seconds (FREE)
+        CAPACITY_MULTIPLIER: 2.5
     },
 
-    // Fleet settings
+    // Fleet mechanics
     FLEET: {
         SPEED: 80,
-        MIN_SEND: 1,
+        MIN_SHIPS: 1
     },
 
-    // AI settings
+    // AI configuration
     AI: {
-        DECISION_INTERVAL: 3000,  // Slightly slower for energy management
-        AGGRESSION: 0.7,          // Reduced due to energy constraints
-        MIN_ATTACK_FORCE: 2,
+        DECISION_INTERVAL: 3000,
+        AGGRESSION: 0.7,
+        BUILDING_CHECK_INTERVAL: 8000
     },
 
-    // Visual settings
-    VISUAL: {
-        PLANET_MIN_RADIUS: 15,
-        PLANET_MAX_RADIUS: 40,
-        SHIP_TRAIL_LENGTH: 8,
-        HOVER_GLOW: '#ffff00',
+    // Resource system - ENERGY AS FUEL
+    RESOURCES: {
+        STARTING_METAL: 75,
+        STARTING_ENERGY: 90,
+        METAL_GENERATION_BASE: 18, // per minute
+        ENERGY_GENERATION_BASE: 9, // per minute
+        SHIP_GENERATION_RATE: 30   // ships per minute (FREE)
     },
 
-    // Colors
+    // ENERGY AS FUEL - Movement cost calculation
+    ENERGY_FUEL: {
+        BASE_COST_PER_SHIP: 1.5,
+        DISTANCE_MULTIPLIER: 0.005,
+        // Formula: (1.5 × ships) + (distance × ships × 0.005)
+    },
+
+    // Calculate movement cost
+    calculateMovementCost(ships, distance) {
+        const baseCost = this.ENERGY_FUEL.BASE_COST_PER_SHIP * ships;
+        const distanceCost = distance * ships * this.ENERGY_FUEL.DISTANCE_MULTIPLIER;
+        return Math.ceil(baseCost + distanceCost);
+    },
+
+    // Get detailed cost breakdown
+    getMovementCostInfo(ships, distance) {
+        const baseCost = this.ENERGY_FUEL.BASE_COST_PER_SHIP * ships;
+        const distanceCost = distance * ships * this.ENERGY_FUEL.DISTANCE_MULTIPLIER;
+        const total = Math.ceil(baseCost + distanceCost);
+        
+        return {
+            ships,
+            distance: Math.round(distance),
+            baseCost: Math.round(baseCost * 10) / 10,
+            distanceCost: Math.round(distanceCost * 10) / 10,
+            total
+        };
+    },
+
+    // Colors and visual settings
     COLORS: {
         PLAYER: '#00ff88',
-        AI: '#ff4444', 
+        AI: '#ff4444',
         NEUTRAL: '#888888',
-        BACKGROUND: '#0a0a1a',
-        UI_TEXT: '#ffffff',
+        BACKGROUND: '#0a0a0a'
     },
 
-    // ENERGY FUEL SYSTEM: New ship movement costs
-    SHIP_COST: {
-        metal: 0,   // FREE to move ships (they regenerate free)
-        energy: {
-            base: 1.5,              // Base energy cost per ship
-            distanceMultiplier: 0.005, // Additional cost per pixel distance
-            // Formula: cost = (base * ships) + (distance * ships * distanceMultiplier)
-        }
-    },
-
-    // ENERGY FUEL: Updated resource system
-    RESOURCES: {
-        METAL: {
-            generationBase: 1.0,      // Reduced: only for buildings
-            shipCost: 0,              // No metal cost for movement
-            storageMultiplier: 3.0    // Less storage needed
-        },
-        ENERGY: {
-            generationBase: 1.5,      // Increased: critical for movement
-            shipCost: 1.5,            // Base energy cost per ship
-            storageMultiplier: 4.0    // More storage for energy
-        }
-    },
-
-    // Building system (Action 02) - ENERGY FUEL COMPATIBLE
-    BUILDINGS: {
-        MAX_PER_PLANET: 3,
-        CONSTRUCTION_UPDATE_INTERVAL: 100,
-        REFUND_PERCENTAGE: 0.5,
-        
-        SLOT_POSITIONS: [
-            { angle: 0, distance: 45 },
-            { angle: 120, distance: 45 },
-            { angle: 240, distance: 45 }
-        ]
-    },
-
-    // Keyboard assignments
+    // Keyboard assignments for planets
     KEYBOARD: {
-        AVAILABLE_KEYS: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k'],
-        assignments: {},
+        assignments: {}
     },
 
-    // ENERGY FUEL SYSTEM: New utility functions
-    FUEL: {
-        // Calculate energy cost for ship movement
-        calculateMovementCost(ships, distance) {
-            const baseCost = this.SHIP_COST.energy.base * ships;
-            const distanceCost = distance * ships * this.SHIP_COST.energy.distanceMultiplier;
-            return Math.ceil(baseCost + distanceCost);
+    // Initialize keyboard assignments
+    initKeyboardAssignments(planets) {
+        const keys = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm'];
+        
+        this.KEYBOARD.assignments = {};
+        
+        planets.forEach((planet, index) => {
+            if (index < keys.length) {
+                const key = keys[index];
+                this.KEYBOARD.assignments[key] = planet.id;
+                planet.assignedKey = key;
+            }
+        });
+        
+        console.log('⌨️ Keyboard assignments initialized:', this.KEYBOARD.assignments);
+    },
+
+    // Debug utilities
+    debug: {
+        showConfig() {
+            console.table({
+                'Canvas Size': `${CONFIG.CANVAS.WIDTH}x${CONFIG.CANVAS.HEIGHT}`,
+                'Planet Count': CONFIG.PLANETS.COUNT,
+                'Fleet Speed': CONFIG.FLEET.SPEED,
+                'AI Interval': CONFIG.AI.DECISION_INTERVAL + 'ms',
+                'Starting Metal': CONFIG.RESOURCES.STARTING_METAL,
+                'Starting Energy': CONFIG.RESOURCES.STARTING_ENERGY
+            });
         },
         
-        // Check if player/AI can afford movement
-        canAffordMovement(ships, distance, availableEnergy) {
-            const cost = this.calculateMovementCost(ships, distance);
-            return availableEnergy >= cost;
-        },
-        
-        // Get movement cost info for UI
-        getMovementCostInfo(ships, distance) {
-            const cost = this.calculateMovementCost(ships, distance);
-            const baseCost = this.SHIP_COST.energy.base * ships;
-            const distanceCost = cost - baseCost;
+        testEnergyCalculation() {
+            console.log('🧪 Energy Cost Tests:');
+            const tests = [
+                { ships: 5, distance: 100 },
+                { ships: 10, distance: 200 },
+                { ships: 15, distance: 300 }
+            ];
             
-            return {
-                total: cost,
-                base: Math.ceil(baseCost),
-                distance: Math.ceil(distanceCost),
-                perShip: (cost / ships).toFixed(1)
-            };
+            tests.forEach(test => {
+                const cost = CONFIG.getMovementCostInfo(test.ships, test.distance);
+                console.log(`${test.ships} ships, ${test.distance}px:`, cost);
+            });
         }
     }
 };
 
-// Make FUEL functions available at CONFIG level
-CONFIG.calculateMovementCost = function(ships, distance) {
-    const baseCost = this.SHIP_COST.energy.base * ships;
-    const distanceCost = distance * ships * this.SHIP_COST.energy.distanceMultiplier;
-    return Math.ceil(baseCost + distanceCost);
-};
+// Make CONFIG available globally
+if (typeof window !== 'undefined') {
+    window.CONFIG = CONFIG;
+}
 
-CONFIG.canAffordMovement = function(ships, distance, availableEnergy) {
-    const cost = this.calculateMovementCost(ships, distance);
-    return availableEnergy >= cost;
-};
-
-CONFIG.getMovementCostInfo = function(ships, distance) {
-    const cost = this.calculateMovementCost(ships, distance);
-    const baseCost = this.SHIP_COST.energy.base * ships;
-    const distanceCost = cost - baseCost;
-    
-    return {
-        total: cost,
-        base: Math.ceil(baseCost),
-        distance: Math.ceil(distanceCost),
-        perShip: (cost / ships).toFixed(1)
-    };
-};
+// Log initialization
+console.log('⚙️ CONFIG loaded - Energy as Fuel System V2.4');
