@@ -1,1 +1,393 @@
-// AI Controller - ENERGY AS FUEL SYSTEM V2.0\n// AI uses same energy rules as player\nconst AI = {\n    lastDecision: 0,\n    lastBuildingDecision: 0,\n    strategy: 'balanced',\n    difficulty: 'normal',\n    enableBuildingSystem: true, // Always enabled now\n    \n    init() {\n        this.lastDecision = Date.now();\n        this.lastBuildingDecision = Date.now();\n        this.strategy = 'balanced';\n        console.log('🤖 AI initialized - ENERGY AS FUEL SYSTEM');\n    },\n\n    update() {\n        const now = Date.now();\n        \n        // ENERGY FUEL: Slightly slower decisions for energy management\n        const decisionInterval = CONFIG.AI?.DECISION_INTERVAL || 3000;\n        \n        if (now - this.lastDecision >= decisionInterval) {\n            this.makeDecision();\n            this.lastDecision = now;\n        }\n\n        // Building decisions every 8 seconds\n        if (now - this.lastBuildingDecision >= 8000) {\n            this.makeBuildingDecision();\n            this.lastBuildingDecision = now;\n        }\n    },\n\n    makeDecision() {\n        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai' && p.ships > 1);\n        \n        if (aiPlanets.length === 0) {\n            return;\n        }\n\n        // ENERGY FUEL: Analyze game state including energy situation\n        const gameState = this.analyzeGameState();\n        \n        // Update strategy based on energy availability\n        this.updateStrategy(gameState);\n        \n        // Find best action considering energy constraints\n        const action = this.selectBestAction(gameState);\n        \n        if (action) {\n            this.executeAction(action);\n        }\n    },\n\n    // ENERGY FUEL: Enhanced building decision making\n    makeBuildingDecision() {\n        if (!this.enableBuildingSystem || typeof BuildingManager === 'undefined') return;\n\n        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');\n        const gameState = this.analyzeGameState();\n        \n        aiPlanets.forEach(planet => {\n            // ENERGY FUEL: Intelligent building selection\n            const recommendedBuilding = Buildings.getAIRecommendedBuilding(planet, gameState);\n            \n            if (recommendedBuilding) {\n                const building = Buildings.getDefinition(recommendedBuilding);\n                \n                // Check if AI can afford it\n                if (Buildings.canAIAfford(recommendedBuilding, gameState.aiMetal, gameState.aiEnergy)) {\n                    // 40% chance to build per cycle\n                    if (Math.random() < 0.4) {\n                        const buildAttempt = BuildingManager.tryAIConstruction(planet, recommendedBuilding);\n                        if (buildAttempt) {\n                            console.log(`🤖 AI built ${building.name} on planet ${planet.id}`);\n                        }\n                    }\n                }\n            }\n        });\n    },\n\n    // ENERGY FUEL: Enhanced game state analysis\n    analyzeGameState() {\n        const planets = GameEngine.planets;\n        const myPlanets = planets.filter(p => p.owner === 'ai');\n        const playerPlanets = planets.filter(p => p.owner === 'player');\n        const neutralPlanets = planets.filter(p => p.owner === 'neutral');\n        \n        const myTotalShips = myPlanets.reduce((sum, p) => sum + p.ships, 0);\n        const playerTotalShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);\n        \n        // ENERGY FUEL: AI energy from ResourceManager (unified system)\n        const aiEnergy = ResourceManager.getAIEnergy();\n        const aiMetal = myPlanets.reduce((sum, p) => sum + (p.aiMetal || 0), 0);\n        \n        // Calculate energy efficiency\n        const avgEnergyPerPlanet = aiEnergy / Math.max(myPlanets.length, 1);\n        const hasResearchLab = myPlanets.some(p => \n            p.buildings && p.buildings.research_lab && !p.buildings.research_lab.constructing\n        );\n        \n        return {\n            myPlanets,\n            playerPlanets,\n            neutralPlanets,\n            myTotalShips,\n            playerTotalShips,\n            aiEnergy,\n            aiMetal,\n            avgEnergyPerPlanet,\n            hasResearchLab,\n            shipRatio: myTotalShips / Math.max(playerTotalShips, 1),\n            gamePhase: neutralPlanets.length > 2 ? 'expansion' : 'endgame',\n            energyHealth: avgEnergyPerPlanet > 30 ? 'excellent' : \n                         avgEnergyPerPlanet > 15 ? 'good' : \n                         avgEnergyPerPlanet > 8 ? 'medium' : 'poor',\n            metalHealth: aiMetal > 80 ? 'excellent' : \n                        aiMetal > 40 ? 'good' : \n                        aiMetal > 20 ? 'medium' : 'poor'\n        };\n    },\n\n    // ENERGY FUEL: Strategy based on energy availability\n    updateStrategy(gameState) {\n        // Energy is now the limiting factor\n        if (gameState.energyHealth === 'poor') {\n            this.strategy = 'conservative'; // Very small, local movements only\n        } else if (!gameState.hasResearchLab && gameState.aiMetal > 40) {\n            this.strategy = 'infrastructure'; // Focus on getting Research Lab\n        } else if (gameState.gamePhase === 'expansion' && gameState.neutralPlanets.length > 0) {\n            if (gameState.energyHealth === 'excellent') {\n                this.strategy = 'aggressive_expansion';\n            } else {\n                this.strategy = 'expansion';\n            }\n        } else if (gameState.shipRatio < 0.7) {\n            this.strategy = 'defensive';\n        } else if (gameState.shipRatio > 1.5 && gameState.energyHealth === 'excellent') {\n            this.strategy = 'aggressive';\n        } else {\n            this.strategy = 'balanced';\n        }\n    },\n\n    selectBestAction(gameState) {\n        const actions = this.generatePossibleActions(gameState);\n        \n        if (actions.length === 0) return null;\n        \n        // ENERGY FUEL: Filter actions by energy constraints\n        const affordableActions = actions.filter(action => this.canAffordAction(action, gameState));\n        \n        if (affordableActions.length === 0) {\n            // Try very conservative actions\n            return this.generateConservativeAction(gameState);\n        }\n        \n        // Score actions based on energy efficiency\n        const scoredActions = affordableActions.map(action => ({\n            ...action,\n            score: this.scoreAction(action, gameState)\n        }));\n        \n        // Sort by score\n        scoredActions.sort((a, b) => b.score - a.score);\n        \n        return scoredActions[0];\n    },\n\n    // ENERGY FUEL: Check if AI can afford an action\n    canAffordAction(action, gameState) {\n        const energyCost = CONFIG.calculateMovementCost(action.ships, action.distance);\n        return gameState.aiEnergy >= energyCost;\n    },\n\n    // ENERGY FUEL: Generate conservative action when energy is low\n    generateConservativeAction(gameState) {\n        // Find very close targets only\n        const weakestNeutral = gameState.neutralPlanets\n            .filter(p => p.ships <= 3)\n            .sort((a, b) => a.ships - b.ships)[0];\n        \n        if (!weakestNeutral) return null;\n        \n        // Find closest AI planet\n        const sourcePlanet = gameState.myPlanets\n            .filter(p => p.ships > weakestNeutral.ships + 1)\n            .sort((a, b) => Utils.distance(a, weakestNeutral) - Utils.distance(b, weakestNeutral))[0];\n        \n        if (!sourcePlanet) return null;\n        \n        const distance = Utils.distance(sourcePlanet, weakestNeutral);\n        const fleetSize = Math.min(weakestNeutral.ships + 2, 4); // Very small fleets\n        const energyCost = CONFIG.calculateMovementCost(fleetSize, distance);\n        \n        // Only if very cheap\n        if (energyCost <= Math.max(5, gameState.aiEnergy * 0.1)) {\n            return {\n                type: 'conservative_attack',\n                source: sourcePlanet,\n                target: weakestNeutral,\n                ships: fleetSize,\n                distance,\n                energyCost\n            };\n        }\n        \n        return null;\n    },\n\n    generatePossibleActions(gameState) {\n        const actions = [];\n        \n        // ENERGY FUEL: Target selection based on strategy and energy\n        let targets = [];\n        \n        switch (this.strategy) {\n            case 'infrastructure':\n                // Only very safe, close targets while building economy\n                targets = gameState.neutralPlanets.filter(p => p.ships <= 3);\n                break;\n                \n            case 'conservative':\n                // Only attack very weak, close neutrals\n                targets = gameState.neutralPlanets.filter(p => p.ships <= 4);\n                break;\n                \n            case 'aggressive_expansion':\n                // Target all neutrals first, then weak player planets\n                targets = [\n                    ...gameState.neutralPlanets,\n                    ...gameState.playerPlanets.filter(p => p.ships <= 8)\n                ];\n                break;\n                \n            case 'expansion':\n                // Prioritize neutrals\n                targets = [\n                    ...gameState.neutralPlanets,\n                    ...gameState.playerPlanets.filter(p => p.ships <= 5)\n                ];\n                break;\n                \n            case 'aggressive':\n                // Attack everything\n                targets = [\n                    ...gameState.playerPlanets,\n                    ...gameState.neutralPlanets\n                ];\n                break;\n                \n            default:\n                // Balanced approach\n                targets = [\n                    ...gameState.neutralPlanets,\n                    ...gameState.playerPlanets.filter(p => p.ships <= 6)\n                ];\n        }\n        \n        gameState.myPlanets.forEach(source => {\n            if (source.ships <= 2) return; // Need ships for attack\n            \n            targets.forEach(target => {\n                const distance = Utils.distance(source, target);\n                const shipsToSend = this.calculateShipsToSend(source, target, gameState);\n                \n                if (shipsToSend > 0) {\n                    const energyCost = CONFIG.calculateMovementCost(shipsToSend, distance);\n                    \n                    actions.push({\n                        type: 'attack',\n                        source,\n                        target,\n                        ships: shipsToSend,\n                        distance,\n                        energyCost\n                    });\n                }\n            });\n        });\n        \n        return actions;\n    },\n\n    // ENERGY FUEL: Better ship calculation considering energy efficiency\n    calculateShipsToSend(source, target, gameState) {\n        let needed;\n        \n        if (target.owner === 'neutral') {\n            needed = target.ships + 2;\n        } else {\n            needed = Math.max(target.ships + 3, Math.ceil(target.ships * 1.3));\n        }\n        \n        const available = source.ships - 2; // Keep 2 for defense\n        const affordable = Math.min(needed, available);\n        \n        // ENERGY FUEL: Scale based on energy health\n        if (gameState.energyHealth === 'poor') {\n            return Math.min(affordable, 3); // Very small fleets\n        } else if (gameState.energyHealth === 'medium') {\n            return Math.min(affordable, Math.floor(affordable * 0.7));\n        }\n        \n        return affordable;\n    },\n\n    // ENERGY FUEL: Score action based on energy efficiency\n    scoreAction(action, gameState) {\n        const { target, distance, ships, energyCost } = action;\n        let score = 0;\n        \n        // Base value of target planet\n        score += target.capacity * 12;\n        \n        // ENERGY FUEL: Energy efficiency is critical\n        const energyEfficiency = target.capacity / energyCost;\n        score += energyEfficiency * 15;\n        \n        // Distance penalty (energy cost already factors this)\n        score -= distance * 0.02;\n        \n        // Strategy modifiers\n        switch (this.strategy) {\n            case 'infrastructure':\n                score += target.owner === 'neutral' && target.ships <= 3 ? 100 : -50;\n                break;\n            case 'conservative':\n                score += target.owner === 'neutral' && target.ships <= 4 ? 80 : -30;\n                break;\n            case 'aggressive_expansion':\n                score += target.owner === 'neutral' ? 60 : 25;\n                score += target.capacity > 40 ? 30 : 0;\n                break;\n            case 'expansion':\n                score += target.owner === 'neutral' ? 50 : 20;\n                break;\n            case 'aggressive':\n                score += target.owner === 'player' ? 60 : 30;\n                break;\n            default:\n                score += target.owner === 'neutral' ? 40 : 25;\n        }\n        \n        // Success probability\n        let successChance;\n        if (target.owner === 'neutral') {\n            successChance = ships > target.ships + 1 ? 0.95 : 0.8;\n        } else {\n            successChance = ships > target.ships + 2 ? 0.85 : ships > target.ships ? 0.7 : 0.4;\n        }\n        \n        score *= successChance;\n        \n        // ENERGY FUEL: Bonus for energy conservation\n        if (gameState.energyHealth === 'poor' && energyCost <= 8) {\n            score += 25;\n        }\n        \n        // Research Lab priority bonus\n        if (!gameState.hasResearchLab && gameState.strategy === 'infrastructure') {\n            score += 30; // Bonus for actions that help secure resources for Research Lab\n        }\n        \n        return score;\n    },\n\n    executeAction(action) {\n        const { source, target, ships, distance, energyCost } = action;\n        \n        if (!source.canSendShips(ships)) {\n            return;\n        }\n        \n        // ENERGY FUEL: Pay energy cost through ResourceManager\n        if (ResourceManager.payForAIMovement(ships, distance)) {\n            // Create fleet\n            FleetManager.createFleet(source, target, ships, 'ai');\n            \n            // Logging with energy cost info\n            if (Math.random() < 0.2) {\n                console.log(`🤖 AI ${this.strategy}: ${ships} ships ${source.id} → ${target.id} (${target.owner}) [Cost: ${energyCost} energy]`);\n            }\n        } else {\n            // Not enough energy\n            if (Math.random() < 0.1) {\n                console.log(`🤖 AI cannot afford movement: ${ships} ships, ${energyCost} energy needed`);\n            }\n        }\n    }\n};"
+// AI Controller - ENERGY AS FUEL SYSTEM V2.0
+// AI uses same energy rules as player
+const AI = {
+    lastDecision: 0,
+    lastBuildingDecision: 0,
+    strategy: 'balanced',
+    difficulty: 'normal',
+    enableBuildingSystem: true, // Always enabled now
+    
+    init() {
+        this.lastDecision = Date.now();
+        this.lastBuildingDecision = Date.now();
+        this.strategy = 'balanced';
+        console.log('🤖 AI initialized - ENERGY AS FUEL SYSTEM');
+    },
+
+    update() {
+        const now = Date.now();
+        
+        // ENERGY FUEL: Slightly slower decisions for energy management
+        const decisionInterval = CONFIG.AI?.DECISION_INTERVAL || 3000;
+        
+        if (now - this.lastDecision >= decisionInterval) {
+            this.makeDecision();
+            this.lastDecision = now;
+        }
+
+        // Building decisions every 8 seconds
+        if (now - this.lastBuildingDecision >= 8000) {
+            this.makeBuildingDecision();
+            this.lastBuildingDecision = now;
+        }
+    },
+
+    makeDecision() {
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai' && p.ships > 1);
+        
+        if (aiPlanets.length === 0) {
+            return;
+        }
+
+        // ENERGY FUEL: Analyze game state including energy situation
+        const gameState = this.analyzeGameState();
+        
+        // Update strategy based on energy availability
+        this.updateStrategy(gameState);
+        
+        // Find best action considering energy constraints
+        const action = this.selectBestAction(gameState);
+        
+        if (action) {
+            this.executeAction(action);
+        }
+    },
+
+    // ENERGY FUEL: Enhanced building decision making
+    makeBuildingDecision() {
+        if (!this.enableBuildingSystem || typeof BuildingManager === 'undefined') return;
+
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');
+        const gameState = this.analyzeGameState();
+        
+        aiPlanets.forEach(planet => {
+            // ENERGY FUEL: Intelligent building selection
+            const recommendedBuilding = Buildings.getAIRecommendedBuilding(planet, gameState);
+            
+            if (recommendedBuilding) {
+                const building = Buildings.getDefinition(recommendedBuilding);
+                
+                // Check if AI can afford it
+                if (Buildings.canAIAfford(recommendedBuilding, gameState.aiMetal, gameState.aiEnergy)) {
+                    // 40% chance to build per cycle
+                    if (Math.random() < 0.4) {
+                        const buildAttempt = BuildingManager.tryAIConstruction(planet, recommendedBuilding);
+                        if (buildAttempt) {
+                            console.log(`🤖 AI built ${building.name} on planet ${planet.id}`);
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    // ENERGY FUEL: Enhanced game state analysis
+    analyzeGameState() {
+        const planets = GameEngine.planets;
+        const myPlanets = planets.filter(p => p.owner === 'ai');
+        const playerPlanets = planets.filter(p => p.owner === 'player');
+        const neutralPlanets = planets.filter(p => p.owner === 'neutral');
+        
+        const myTotalShips = myPlanets.reduce((sum, p) => sum + p.ships, 0);
+        const playerTotalShips = playerPlanets.reduce((sum, p) => sum + p.ships, 0);
+        
+        // ENERGY FUEL: AI energy from ResourceManager (unified system)
+        const aiEnergy = ResourceManager.getAIEnergy();
+        const aiMetal = myPlanets.reduce((sum, p) => sum + (p.aiMetal || 0), 0);
+        
+        // Calculate energy efficiency
+        const avgEnergyPerPlanet = aiEnergy / Math.max(myPlanets.length, 1);
+        const hasResearchLab = myPlanets.some(p => 
+            p.buildings && p.buildings.research_lab && !p.buildings.research_lab.constructing
+        );
+        
+        return {
+            myPlanets,
+            playerPlanets,
+            neutralPlanets,
+            myTotalShips,
+            playerTotalShips,
+            aiEnergy,
+            aiMetal,
+            avgEnergyPerPlanet,
+            hasResearchLab,
+            shipRatio: myTotalShips / Math.max(playerTotalShips, 1),
+            gamePhase: neutralPlanets.length > 2 ? 'expansion' : 'endgame',
+            energyHealth: avgEnergyPerPlanet > 30 ? 'excellent' : 
+                         avgEnergyPerPlanet > 15 ? 'good' : 
+                         avgEnergyPerPlanet > 8 ? 'medium' : 'poor',
+            metalHealth: aiMetal > 80 ? 'excellent' : 
+                        aiMetal > 40 ? 'good' : 
+                        aiMetal > 20 ? 'medium' : 'poor'
+        };
+    },
+
+    // ENERGY FUEL: Strategy based on energy availability
+    updateStrategy(gameState) {
+        // Energy is now the limiting factor
+        if (gameState.energyHealth === 'poor') {
+            this.strategy = 'conservative'; // Very small, local movements only
+        } else if (!gameState.hasResearchLab && gameState.aiMetal > 40) {
+            this.strategy = 'infrastructure'; // Focus on getting Research Lab
+        } else if (gameState.gamePhase === 'expansion' && gameState.neutralPlanets.length > 0) {
+            if (gameState.energyHealth === 'excellent') {
+                this.strategy = 'aggressive_expansion';
+            } else {
+                this.strategy = 'expansion';
+            }
+        } else if (gameState.shipRatio < 0.7) {
+            this.strategy = 'defensive';
+        } else if (gameState.shipRatio > 1.5 && gameState.energyHealth === 'excellent') {
+            this.strategy = 'aggressive';
+        } else {
+            this.strategy = 'balanced';
+        }
+    },
+
+    selectBestAction(gameState) {
+        const actions = this.generatePossibleActions(gameState);
+        
+        if (actions.length === 0) return null;
+        
+        // ENERGY FUEL: Filter actions by energy constraints
+        const affordableActions = actions.filter(action => this.canAffordAction(action, gameState));
+        
+        if (affordableActions.length === 0) {
+            // Try very conservative actions
+            return this.generateConservativeAction(gameState);
+        }
+        
+        // Score actions based on energy efficiency
+        const scoredActions = affordableActions.map(action => ({
+            ...action,
+            score: this.scoreAction(action, gameState)
+        }));
+        
+        // Sort by score
+        scoredActions.sort((a, b) => b.score - a.score);
+        
+        return scoredActions[0];
+    },
+
+    // ENERGY FUEL: Check if AI can afford an action
+    canAffordAction(action, gameState) {
+        const energyCost = CONFIG.calculateMovementCost(action.ships, action.distance);
+        return gameState.aiEnergy >= energyCost;
+    },
+
+    // ENERGY FUEL: Generate conservative action when energy is low
+    generateConservativeAction(gameState) {
+        // Find very close targets only
+        const weakestNeutral = gameState.neutralPlanets
+            .filter(p => p.ships <= 3)
+            .sort((a, b) => a.ships - b.ships)[0];
+        
+        if (!weakestNeutral) return null;
+        
+        // Find closest AI planet
+        const sourcePlanet = gameState.myPlanets
+            .filter(p => p.ships > weakestNeutral.ships + 1)
+            .sort((a, b) => Utils.distance(a, weakestNeutral) - Utils.distance(b, weakestNeutral))[0];
+        
+        if (!sourcePlanet) return null;
+        
+        const distance = Utils.distance(sourcePlanet, weakestNeutral);
+        const fleetSize = Math.min(weakestNeutral.ships + 2, 4); // Very small fleets
+        const energyCost = CONFIG.calculateMovementCost(fleetSize, distance);
+        
+        // Only if very cheap
+        if (energyCost <= Math.max(5, gameState.aiEnergy * 0.1)) {
+            return {
+                type: 'conservative_attack',
+                source: sourcePlanet,
+                target: weakestNeutral,
+                ships: fleetSize,
+                distance,
+                energyCost
+            };
+        }
+        
+        return null;
+    },
+
+    generatePossibleActions(gameState) {
+        const actions = [];
+        
+        // ENERGY FUEL: Target selection based on strategy and energy
+        let targets = [];
+        
+        switch (this.strategy) {
+            case 'infrastructure':
+                // Only very safe, close targets while building economy
+                targets = gameState.neutralPlanets.filter(p => p.ships <= 3);
+                break;
+                
+            case 'conservative':
+                // Only attack very weak, close neutrals
+                targets = gameState.neutralPlanets.filter(p => p.ships <= 4);
+                break;
+                
+            case 'aggressive_expansion':
+                // Target all neutrals first, then weak player planets
+                targets = [
+                    ...gameState.neutralPlanets,
+                    ...gameState.playerPlanets.filter(p => p.ships <= 8)
+                ];
+                break;
+                
+            case 'expansion':
+                // Prioritize neutrals
+                targets = [
+                    ...gameState.neutralPlanets,
+                    ...gameState.playerPlanets.filter(p => p.ships <= 5)
+                ];
+                break;
+                
+            case 'aggressive':
+                // Attack everything
+                targets = [
+                    ...gameState.playerPlanets,
+                    ...gameState.neutralPlanets
+                ];
+                break;
+                
+            default:
+                // Balanced approach
+                targets = [
+                    ...gameState.neutralPlanets,
+                    ...gameState.playerPlanets.filter(p => p.ships <= 6)
+                ];
+        }
+        
+        gameState.myPlanets.forEach(source => {
+            if (source.ships <= 2) return; // Need ships for attack
+            
+            targets.forEach(target => {
+                const distance = Utils.distance(source, target);
+                const shipsToSend = this.calculateShipsToSend(source, target, gameState);
+                
+                if (shipsToSend > 0) {
+                    const energyCost = CONFIG.calculateMovementCost(shipsToSend, distance);
+                    
+                    actions.push({
+                        type: 'attack',
+                        source,
+                        target,
+                        ships: shipsToSend,
+                        distance,
+                        energyCost
+                    });
+                }
+            });
+        });
+        
+        return actions;
+    },
+
+    // ENERGY FUEL: Better ship calculation considering energy efficiency
+    calculateShipsToSend(source, target, gameState) {
+        let needed;
+        
+        if (target.owner === 'neutral') {
+            needed = target.ships + 2;
+        } else {
+            needed = Math.max(target.ships + 3, Math.ceil(target.ships * 1.3));
+        }
+        
+        const available = source.ships - 2; // Keep 2 for defense
+        const affordable = Math.min(needed, available);
+        
+        // ENERGY FUEL: Scale based on energy health
+        if (gameState.energyHealth === 'poor') {
+            return Math.min(affordable, 3); // Very small fleets
+        } else if (gameState.energyHealth === 'medium') {
+            return Math.min(affordable, Math.floor(affordable * 0.7));
+        }
+        
+        return affordable;
+    },
+
+    // ENERGY FUEL: Score action based on energy efficiency
+    scoreAction(action, gameState) {
+        const { target, distance, ships, energyCost } = action;
+        let score = 0;
+        
+        // Base value of target planet
+        score += target.capacity * 12;
+        
+        // ENERGY FUEL: Energy efficiency is critical
+        const energyEfficiency = target.capacity / energyCost;
+        score += energyEfficiency * 15;
+        
+        // Distance penalty (energy cost already factors this)
+        score -= distance * 0.02;
+        
+        // Strategy modifiers
+        switch (this.strategy) {
+            case 'infrastructure':
+                score += target.owner === 'neutral' && target.ships <= 3 ? 100 : -50;
+                break;
+            case 'conservative':
+                score += target.owner === 'neutral' && target.ships <= 4 ? 80 : -30;
+                break;
+            case 'aggressive_expansion':
+                score += target.owner === 'neutral' ? 60 : 25;
+                score += target.capacity > 40 ? 30 : 0;
+                break;
+            case 'expansion':
+                score += target.owner === 'neutral' ? 50 : 20;
+                break;
+            case 'aggressive':
+                score += target.owner === 'player' ? 60 : 30;
+                break;
+            default:
+                score += target.owner === 'neutral' ? 40 : 25;
+        }
+        
+        // Success probability
+        let successChance;
+        if (target.owner === 'neutral') {
+            successChance = ships > target.ships + 1 ? 0.95 : 0.8;
+        } else {
+            successChance = ships > target.ships + 2 ? 0.85 : ships > target.ships ? 0.7 : 0.4;
+        }
+        
+        score *= successChance;
+        
+        // ENERGY FUEL: Bonus for energy conservation
+        if (gameState.energyHealth === 'poor' && energyCost <= 8) {
+            score += 25;
+        }
+        
+        // Research Lab priority bonus
+        if (!gameState.hasResearchLab && gameState.strategy === 'infrastructure') {
+            score += 30; // Bonus for actions that help secure resources for Research Lab
+        }
+        
+        return score;
+    },
+
+    executeAction(action) {
+        const { source, target, ships, distance, energyCost } = action;
+        
+        if (!source.canSendShips(ships)) {
+            return;
+        }
+        
+        // ENERGY FUEL: Pay energy cost through ResourceManager
+        if (ResourceManager.payForAIMovement(ships, distance)) {
+            // Create fleet
+            FleetManager.createFleet(source, target, ships, 'ai');
+            
+            // Logging with energy cost info
+            if (Math.random() < 0.2) {
+                console.log(`🤖 AI ${this.strategy}: ${ships} ships ${source.id} → ${target.id} (${target.owner}) [Cost: ${energyCost} energy]`);
+            }
+        } else {
+            // Not enough energy
+            if (Math.random() < 0.1) {
+                console.log(`🤖 AI cannot afford movement: ${ships} ships, ${energyCost} energy needed`);
+            }
+        }
+    }
+};
