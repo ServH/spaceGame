@@ -1,4 +1,4 @@
-// Building UI - OPCIÓN A - FIXED right-click detection using mousedown approach
+// Building UI - OPCIÓN A - FIXED right-click detection + browser context menu prevention
 const BuildingUI = {
     
     currentPlanet: null,
@@ -20,7 +20,7 @@ const BuildingUI = {
         this.initialized = true;
     },
 
-    // FIXED: Setup event listeners using mousedown instead of contextmenu
+    // FIXED: Setup event listeners with proper context menu prevention
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) {
@@ -28,14 +28,15 @@ const BuildingUI = {
             return;
         }
 
-        console.log('🖥️ Setting up BuildingUI event listeners with MOUSEDOWN fix...');
+        console.log('🖥️ Setting up BuildingUI event listeners with context menu prevention...');
 
-        // FIXED: Use mousedown with button detection instead of contextmenu
+        // FIXED: Use mousedown with button detection
         canvas.addEventListener('mousedown', (event) => {
             // Check if it's right-click (button 2)
             if (event.button === 2) {
                 event.preventDefault();
                 event.stopPropagation();
+                event.stopImmediatePropagation();
                 
                 console.log('🖱️ RIGHT MOUSEDOWN DETECTED!', {
                     clientX: event.clientX,
@@ -45,13 +46,29 @@ const BuildingUI = {
                 });
                 
                 this.handleRightClick(event);
+                return false; // Extra prevention
             }
-        });
+        }, true); // Use capture phase for better event interception
 
-        // Still prevent context menu from appearing
+        // FIXED: Stronger context menu prevention
         canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault();
-        });
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            console.log('🚫 Context menu completely prevented');
+            return false;
+        }, true); // Use capture phase
+
+        // Also prevent on the entire document for extra safety
+        document.addEventListener('contextmenu', (event) => {
+            // Only prevent if we're over the canvas
+            if (event.target.closest('#gameCanvas')) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return false;
+            }
+        }, true);
 
         // Click to close building menu
         document.addEventListener('click', (event) => {
@@ -61,7 +78,7 @@ const BuildingUI = {
             }
         });
         
-        console.log('✅ Building UI event listeners setup complete - MOUSEDOWN FIX');
+        console.log('✅ Building UI event listeners setup complete - Context menu fully prevented');
     },
 
     // FIXED: Handle right-click with proper coordinate detection
