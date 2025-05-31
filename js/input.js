@@ -1,4 +1,4 @@
-// Input Manager - Action 02 FIXED - Right-click integration with BuildingUI
+// Input Manager - Action 02 - Respects BuildingUI context menu prevention
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -27,7 +27,7 @@ const InputManager = {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
         this.initialized = true;
-        console.log('🎮 Input Manager initialized - Action 02 with Building System integration');
+        console.log('🎮 Input Manager initialized - Respects BuildingUI context menu prevention');
     },
 
     setupMouseEvents() {
@@ -38,7 +38,7 @@ const InputManager = {
             return;
         }
         
-        console.log('🖱️ Setting up mouse events with Building System integration');
+        console.log('🖱️ Setting up mouse events - BuildingUI has priority for right-clicks');
         
         canvas.addEventListener('mousedown', (e) => {
             this.handleMouseDown(e);
@@ -56,13 +56,8 @@ const InputManager = {
             this.handleMouseLeave();
         }, false);
 
-        // FIXED: Remove contextmenu interference - let BuildingUI handle right-clicks
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Still prevent browser context menu
-            console.log('🖱️ Context menu prevented, BuildingUI should handle right-click');
-        }, false);
-        
-        console.log('✅ Mouse events setup complete - BuildingUI integration ready');
+        // FIXED: Do NOT add contextmenu listener here - let BuildingUI handle it completely
+        console.log('✅ Mouse events setup complete - BuildingUI handles all context menu prevention');
     },
 
     setupKeyboardEvents() {
@@ -71,15 +66,12 @@ const InputManager = {
     },
 
     handleMouseDown(e) {
-        // FIXED: Don't preventDefault for right-clicks to allow BuildingUI to work
-        if (e.button !== 2) { // Only prevent default for non-right-clicks
+        // FIXED: Only handle left-clicks (button 0) - let BuildingUI handle right-clicks completely
+        if (e.button === 0) { // Left-click only
             e.preventDefault();
-        }
-        
-        if (UI && UI.hideTooltip) UI.hideTooltip();
-        
-        // Only handle left-click for dragging (button 0)
-        if (e.button === 0) {
+            
+            if (UI && UI.hideTooltip) UI.hideTooltip();
+            
             const pos = this.getSVGCoordinates(e);
             console.log('🖱️ Left mouse down at SVG coords:', pos);
             
@@ -90,10 +82,8 @@ const InputManager = {
                 console.log('🚀 Starting drag from planet', planet.id);
                 this.startDrag(planet);
             }
-        } else if (e.button === 2) {
-            // Right-click - let BuildingUI handle this
-            console.log('🖱️ Right-click detected - BuildingUI should handle this');
         }
+        // Right-clicks (button 2) are completely ignored - BuildingUI handles them
     },
 
     handleMouseMove(e) {
@@ -314,7 +304,7 @@ const InputManager = {
         }
     },
 
-    // OPCIÓN A: Fleet sending is FREE (only ship creation costs metal)
+    // OPCIÓN A: Fleet sending costs metal (1 metal per ship)
     executeFleetCommand(origin, destination) {
         if (!origin || !destination || origin === destination) return;
         if (origin.owner !== 'player') return;
