@@ -47,7 +47,7 @@
 ### **Quick Commands**
 ```javascript
 // Check system status
-debugModular.checkIntegrity()
+debugModular.checkStructure()
 
 // Test input system
 debugInput.keyboard()
