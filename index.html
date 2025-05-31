@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Game V1.4 Evolution - Action 02 Building System</title>
+    <title>Space Game V1.4 Evolution - Energy Fuel System</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -21,9 +21,9 @@
                 <div class="game-title">
                     <h1>SPACE CONQUEST</h1>
                     <div id="mainResourceDisplay" style="color: #00ff88; font-family: 'Courier New', monospace; font-size: 14px; margin: 5px 0;">
-                        🔩 Metal: 100 (+6.0/min) | ⚡ Energy: 50 (+1.0/min)
+                        🔩 Metal: 75 (+1.0/min) | ⚡ Energy: 90 (+1.5/min)
                     </div>
-                    <div id="gameStatus">¡Conquista todos los planetas!</div>
+                    <div id="gameStatus">¡Energía como combustible! Gestiona tu energía para movilizar flotas</div>
                 </div>
                 
                 <!-- Right: AI Stats -->
@@ -36,7 +36,7 @@
             <!-- Bottom: Clean Controls Info -->
             <div class="ui-bottom">
                 <div class="shortcuts-info" id="shortcutsInfo">
-                    <div>Drag & Drop para enviar naves | Click derecho para construir edificios</div>
+                    <div>Drag & Drop para enviar naves | Click derecho para construir edificios | ⚡ La energía es combustible</div>
                 </div>
             </div>
         </div>
@@ -73,9 +73,12 @@
         </svg>
     </div>
 
-    <!-- Core Scripts (Load Order Important) -->
+    <!-- CRITICAL: Load order fixed for CONFIG dependency -->
+    <!-- Base Configuration (Must be first) -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    
+    <!-- Balance Configuration (After CONFIG is loaded) -->
     <script src="js/balanceConfig.js"></script>
     
     <!-- Evolution Action 01: Resource System -->
@@ -96,6 +99,21 @@
     <script src="js/enhancedAI.js"></script>
     <script src="js/animations.js"></script>
     <script src="js/ui.js"></script>
+    
+    <!-- Game Initialization (Must be last) -->
     <script src="js/game.js"></script>
+
+    <!-- Live Reload for Development -->
+    <script>
+        // Simple live reload for development
+        console.log('🔄 Live reload enabled.');
+        let reloadCheckInterval = setInterval(() => {
+            fetch(window.location.href, { method: 'HEAD' })
+                .catch(() => {
+                    // If fetch fails, likely server restarted, reload
+                    setTimeout(() => window.location.reload(), 500);
+                });
+        }, 2000);
+    </script>
 </body>
 </html>
