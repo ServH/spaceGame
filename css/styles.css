@@ -1,4 +1,4 @@
-/* Space Game Styles - Fixed layout and positioning */
+/* Space Game Styles - Fixed layout and COMPLETE context menu prevention */
 * {
     margin: 0;
     padding: 0;
@@ -20,6 +20,7 @@ body {
     background: radial-gradient(circle at center, #1a1a3a 0%, #0a0a1a 100%);
 }
 
+/* FIXED: Complete context menu prevention for entire game area */
 .game-canvas {
     position: absolute;
     top: 0;
@@ -28,6 +29,28 @@ body {
     height: 100%;
     cursor: crosshair;
     z-index: 1;
+    /* Prevent all context menu behavior */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* FIXED: Prevent context menu on ALL game elements */
+.game-canvas *,
+.planet,
+.planet-text,
+.planet-letter-text,
+.fleet {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    pointer-events: auto !important;
 }
 
 /* Fixed UI Layout - No overlap */
@@ -112,10 +135,17 @@ body {
     text-align: center;
 }
 
-/* Planet styles */
+/* FIXED: Planet styles - removed cursor pointer to prevent browser interference */
 .planet {
-    cursor: pointer;
+    /* REMOVED: cursor: pointer; - this was causing the browser to handle right-clicks */
     transition: all 0.15s ease;
+    /* Force disable context menu */
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
 }
 
 .planet:hover {
@@ -129,7 +159,10 @@ body {
     text-anchor: middle;
     dominant-baseline: central;
     fill: #ffffff;
-    pointer-events: none;
+    pointer-events: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
 }
 
 .planet-letter-text {
@@ -140,14 +173,20 @@ body {
     dominant-baseline: central;
     fill: #ffff00;
     opacity: 0.9;
-    pointer-events: none;
+    pointer-events: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
 }
 
 /* Fleet styles */
 .fleet {
     fill: #ffffff;
     opacity: 0.8;
-    pointer-events: none;
+    pointer-events: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
 }
 
 /* Drag line animation */
@@ -180,6 +219,16 @@ body {
 
 .planet-selected-keyboard {
     animation: selectionPulse 1s ease-in-out infinite alternate;
+}
+
+/* ADDED: Building menu styles to prevent any context menu issues */
+.building-menu {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
 }
 
 /* Responsive design */
