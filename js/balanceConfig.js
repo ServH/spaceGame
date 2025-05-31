@@ -37,6 +37,14 @@ const BalanceConfig = {
 
     // Initialize balance for classic mode
     init() {
+        // Ensure CONFIG is available before using it
+        if (typeof CONFIG === 'undefined') {
+            console.warn('⚠️ CONFIG not available yet, deferring BalanceConfig initialization...');
+            // Try again after a short delay
+            setTimeout(() => this.init(), 100);
+            return;
+        }
+
         this.appliedSettings = {
             startShips: this.CLASSIC.settings.startShips,
             productionBase: this.CLASSIC.settings.productionBase,
@@ -50,18 +58,22 @@ const BalanceConfig = {
             testingMode: this.BASE.TESTING_MODE
         };
 
-        // Apply to CONFIG
-        CONFIG.PLANETS.PRODUCTION_BASE = this.appliedSettings.productionBase;
-        CONFIG.PLANETS.PRODUCTION_MULTIPLIER = this.appliedSettings.productionMultiplier;
-        CONFIG.FLEET.SPEED = this.appliedSettings.fleetSpeed;
-        CONFIG.PLANETS.CONQUEST_TIME = this.appliedSettings.conquestTime;
-        CONFIG.AI.DECISION_INTERVAL = this.appliedSettings.aiDecisionInterval;
+        // Apply to CONFIG safely
+        if (CONFIG && CONFIG.PLANETS) {
+            CONFIG.PLANETS.PRODUCTION_BASE = this.appliedSettings.productionBase;
+            CONFIG.PLANETS.PRODUCTION_MULTIPLIER = this.appliedSettings.productionMultiplier;
+            CONFIG.FLEET.SPEED = this.appliedSettings.fleetSpeed;
+            CONFIG.PLANETS.CONQUEST_TIME = this.appliedSettings.conquestTime;
+            CONFIG.AI.DECISION_INTERVAL = this.appliedSettings.aiDecisionInterval;
 
-        console.log('⚖️ Balance initialized for CONQUEST ONLY mode:', {
-            startShips: this.appliedSettings.startShips,
-            victoryCondition: 'CONQUEST ONLY - No economic victory',
-            testingMode: this.BASE.TESTING_MODE ? 'ENABLED' : 'DISABLED'
-        });
+            console.log('⚖️ Balance initialized for CONQUEST ONLY mode:', {
+                startShips: this.appliedSettings.startShips,
+                victoryCondition: 'CONQUEST ONLY - No economic victory',
+                testingMode: this.BASE.TESTING_MODE ? 'ENABLED' : 'DISABLED'
+            });
+        } else {
+            console.error('❌ CONFIG object structure not as expected');
+        }
     },
 
     // Get current settings
@@ -87,10 +99,10 @@ const BalanceConfig = {
     debugCurrentSettings() {
         console.table({
             'Mode': 'Classic Evolution - CONQUEST ONLY',
-            'Start Ships': this.appliedSettings.startShips,
-            'Production Base': this.appliedSettings.productionBase,
-            'Fleet Speed': this.appliedSettings.fleetSpeed,
-            'Conquest Time': this.appliedSettings.conquestTime + 'ms',
+            'Start Ships': this.appliedSettings?.startShips || 'Not initialized',
+            'Production Base': this.appliedSettings?.productionBase || 'Not initialized',
+            'Fleet Speed': this.appliedSettings?.fleetSpeed || 'Not initialized',
+            'Conquest Time': (this.appliedSettings?.conquestTime || 'Not initialized') + 'ms',
             'Victory Condition': 'TOTAL CONQUEST ONLY',
             'Testing Mode': this.BASE.TESTING_MODE ? 'ON' : 'OFF'
         });
