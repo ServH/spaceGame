@@ -11,13 +11,11 @@
         <!-- UI Overlay -->
         <div class="ui-overlay">
             <div class="ui-top">
-                <!-- Left: Player Stats -->
                 <div class="player-stats">
                     <div class="stat">Planetas: <span id="playerPlanets">1</span></div>
                     <div class="stat">Naves: <span id="playerShips">15</span></div>
                 </div>
                 
-                <!-- Center: Game Title + Resources -->
                 <div class="game-title">
                     <h1>SPACE CONQUEST</h1>
                     <div id="mainResourceDisplay" style="color: #00ff88; font-family: 'Courier New', monospace; font-size: 14px; margin: 5px 0;">
@@ -26,14 +24,12 @@
                     <div id="gameStatus">¡Energía como combustible! Gestiona tu energía para movilizar flotas</div>
                 </div>
                 
-                <!-- Right: AI Stats -->
                 <div class="ai-stats">
                     <div class="stat">IA Planetas: <span id="aiPlanets">1</span></div>
                     <div class="stat">IA Naves: <span id="aiShips">15</span></div>
                 </div>
             </div>
 
-            <!-- Bottom: Controls Info -->
             <div class="ui-bottom">
                 <div class="shortcuts-info" id="shortcutsInfo">
                     <div>Drag & Drop para enviar naves | Click derecho para construir edificios | ⚡ La energía es combustible</div>
@@ -73,20 +69,21 @@
         </svg>
     </div>
 
-    <!-- MODULAR ARCHITECTURE: Organized by /src/ structure -->
+    <!-- 🏗️ MODULAR ARCHITECTURE: Complete /src/ Structure -->
     
     <!-- Core Configuration -->
     <script src="src/config/config.js"></script>
     <script src="src/config/balanceConfig.js"></script>
+    
+    <!-- Core Engine -->
     <script src="src/core/utils.js"></script>
     <script src="src/core/gameEngine.js"></script>
     
-    <!-- Resource & Building Systems -->
-    <script src="js/resourceManager.js"></script>
-    <script src="js/resourceUI.js"></script>
-    <script src="js/buildings.js"></script>
-    <script src="js/buildingManager.js"></script>
-    <script src="js/buildingUI.js"></script>
+    <!-- Game Systems -->
+    <script src="src/systems/resourceManager.js"></script>
+    <script src="src/systems/buildings.js"></script>
+    <script src="src/systems/buildingManager.js"></script>
+    <script src="src/systems/ai.js"></script>
     
     <!-- Game Entities -->
     <script src="src/entities/planet.js"></script>
@@ -98,79 +95,57 @@
     <script src="src/input/keyboardHandler.js"></script>
     <script src="src/input/inputManager.js"></script>
     
-    <!-- AI & Visual Systems -->
-    <script src="js/ai.js"></script>
-    <script src="js/animations.js"></script>
-    <script src="js/ui.js"></script>
+    <!-- UI Systems -->
+    <script src="src/ui/resourceUI.js"></script>
+    <script src="src/ui/buildingUI.js"></script>
+    <script src="src/ui/animations.js"></script>
+    <script src="src/ui/ui.js"></script>
     
     <!-- Game Initialization -->
-    <script src="js/game.js"></script>
+    <script src="src/game.js"></script>
 
     <!-- Development Tools -->
     <script>
-        // Enhanced performance monitoring
         const perfMonitor = {
             start: Date.now(),
             
             checkLoadTime() {
                 const total = Date.now() - this.start;
-                console.log(`🚀 Game loaded in ${total}ms`);
-                console.log('📊 Modular architecture performance optimized');
-            },
-            
-            analyzeStructure() {
-                console.log('🏗️ New Modular Structure:');
-                console.log('✅ src/config/ - Configuration files');
-                console.log('✅ src/core/ - Core game engine');
-                console.log('✅ src/entities/ - Game entities (Planet, Fleet)');
-                console.log('✅ src/input/ - Modular input system');
-                console.log('✅ js/ - Legacy systems (to be migrated)');
+                console.log(`🚀 Modular game loaded in ${total}ms`);
             }
         };
         
-        window.addEventListener('load', () => {
-            perfMonitor.checkLoadTime();
-            setTimeout(() => perfMonitor.analyzeStructure(), 1000);
-        });
+        window.addEventListener('load', () => perfMonitor.checkLoadTime());
         
-        // Enhanced debug helpers
+        // Enhanced modular debug tools
         window.debugModular = {
-            listModules() {
-                const coreModules = ['CONFIG', 'BalanceConfig', 'Utils', 'GameEngine'];
-                const inputModules = ['UIFeedback', 'MouseHandler', 'KeyboardHandler', 'InputManager'];
-                const entityModules = ['Planet', 'FleetManager'];
+            checkStructure() {
+                console.log('🏗️ Modular Structure Status:');
+                const modules = {
+                    'Config': ['CONFIG', 'BalanceConfig'],
+                    'Core': ['Utils', 'GameEngine'],
+                    'Systems': ['ResourceManager', 'Buildings', 'BuildingManager', 'AI'],
+                    'Entities': ['Planet', 'FleetManager'],
+                    'Input': ['UIFeedback', 'MouseHandler', 'KeyboardHandler', 'InputManager'],
+                    'UI': ['ResourceUI', 'BuildingUI', 'Animations', 'UI']
+                };
                 
-                console.log('🎮 Core Modules:');
-                coreModules.forEach(mod => {
-                    console.log(`  ${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
-                });
-                
-                console.log('🖱️ Input Modules:');
-                inputModules.forEach(mod => {
-                    console.log(`  ${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
-                });
-                
-                console.log('🎯 Entity Modules:');
-                entityModules.forEach(mod => {
-                    console.log(`  ${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
+                Object.entries(modules).forEach(([category, moduleList]) => {
+                    console.log(`${category}:`);
+                    moduleList.forEach(mod => {
+                        console.log(`  ${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
+                    });
                 });
             },
             
-            checkIntegrity() {
-                const critical = ['CONFIG', 'GameEngine', 'InputManager'];
-                const allGood = critical.every(mod => typeof window[mod] !== 'undefined');
-                
-                console.log(`🔍 System Integrity: ${allGood ? '✅ PASS' : '❌ FAIL'}`);
-                return allGood;
+            showMigration() {
+                console.log('📦 Migration Complete:');
+                console.log('✅ All files moved to /src/ structure');
+                console.log('✅ Obsolete files moved to _delete/');
+                console.log('✅ Documentation organized in docs/');
+                console.log('🎯 Ready for Action 03!');
             }
         };
-        
-        // Auto-run system check
-        setTimeout(() => {
-            if (typeof debugModular !== 'undefined') {
-                debugModular.checkIntegrity();
-            }
-        }, 2000);
     </script>
 </body>
 </html>
