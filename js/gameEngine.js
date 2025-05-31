@@ -1,4 +1,4 @@
-// Game Engine - OPCIÓN A GALCON - Easier neutrals, larger planets, better balance
+// Game Engine - OPCIÓN A GALCON + Building System Priority Initialization
 const GameEngine = {
     canvas: null,
     planets: [],
@@ -10,7 +10,10 @@ const GameEngine = {
         this.canvas = document.getElementById('gameCanvas');
         this.setupCanvas();
         
-        // Action 02: Initialize all evolution systems
+        // PRIORITY: Initialize BuildingUI FIRST before any other input systems
+        this.initBuildingSystemFirst();
+        
+        // Action 02: Initialize other evolution systems
         this.initEvolutionSystems();
         
         this.generatePlanets();
@@ -30,13 +33,31 @@ const GameEngine = {
             UI.init();
         }
         
-        // IMPORTANT: Initialize InputManager AFTER planets are created
+        // IMPORTANT: Initialize InputManager AFTER BuildingUI and planets are created
         if (typeof InputManager !== 'undefined') {
-            console.log('🎮 Initializing InputManager...');
+            console.log('🎮 Initializing InputManager AFTER BuildingUI...');
             InputManager.init();
         }
         
         this.start();
+    },
+
+    // PRIORITY: Initialize building system before anything else that handles input
+    initBuildingSystemFirst() {
+        console.log('🏗️ PRIORITY: Initializing Building System FIRST...');
+        
+        // Building system gets priority for event handling
+        if (typeof BuildingUI !== 'undefined') {
+            BuildingUI.init();
+            console.log('🖥️ Building UI initialized with priority');
+        }
+        
+        if (typeof BuildingManager !== 'undefined') {
+            BuildingManager.init();
+            console.log('🏗️ Building Manager initialized with priority');
+        }
+        
+        console.log('✅ Building System initialized with input priority');
     },
 
     initEvolutionSystems() {
@@ -51,16 +72,7 @@ const GameEngine = {
             ResourceUI.init();
         }
         
-        // Action 02: Building system
-        if (typeof BuildingManager !== 'undefined') {
-            BuildingManager.init();
-            console.log('🏗️ Building Manager initialized');
-        }
-        
-        if (typeof BuildingUI !== 'undefined') {
-            BuildingUI.init();
-            console.log('🖥️ Building UI initialized');
-        }
+        // Building system already initialized above with priority
         
         // Initialize balance config for classic mode
         if (typeof BalanceConfig !== 'undefined') {
