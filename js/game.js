@@ -40,12 +40,23 @@ const Game = {
         
         // Initialize resource system (Action 01)
         if (typeof ResourceManager !== 'undefined') {
-            console.log('💰 Resource system available');
+            ResourceManager.init();
+            console.log('💰 Resource system initialized');
         }
         
-        // Initialize building system (Action 02) - will be implemented
+        // Initialize building system (Action 02) - FIXED INITIALIZATION
+        if (typeof Buildings !== 'undefined') {
+            console.log('🏗️ Buildings definitions loaded');
+        }
+        
         if (typeof BuildingManager !== 'undefined') {
-            console.log('🏗️ Building system available');
+            BuildingManager.init();
+            console.log('🏗️ Building Manager initialized');
+        }
+        
+        if (typeof BuildingUI !== 'undefined') {
+            BuildingUI.init();
+            console.log('🖥️ Building UI initialized');
         }
         
         // Initialize game engine
@@ -57,15 +68,162 @@ const Game = {
             UIExtensions.init();
         }
         
+        // Initialize AI with building capabilities
+        if (typeof AI !== 'undefined') {
+            AI.enableBuildingSystem = true;
+            console.log('🤖 AI building system enabled');
+        }
+        
         this.showWelcomeMessage();
+        this.setupConstructionFeedback();
     },
 
     showWelcomeMessage() {
         setTimeout(() => {
             if (typeof UI !== 'undefined' && UI.setStatus) {
-                UI.setStatus('¡Evolution Action 02! Click derecho en planetas para construir', 3000);
+                UI.setStatus('¡Evolution Action 02! Click derecho en planetas VERDES para construir edificios', 4000);
             }
         }, 500);
+    },
+
+    // Setup construction feedback system for MVP testing
+    setupConstructionFeedback() {
+        console.log('🔧 Setting up construction feedback system...');
+        
+        // Create construction status panel
+        const feedbackPanel = document.createElement('div');
+        feedbackPanel.id = 'constructionFeedback';
+        feedbackPanel.style.cssText = `
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-width: 300px;
+            z-index: 1500;
+            display: none;
+        `;
+        document.body.appendChild(feedbackPanel);
+        
+        // Setup construction event listeners for feedback
+        this.setupConstructionEventListeners();
+        
+        // Add debug commands to console
+        this.addDebugCommands();
+    },
+
+    setupConstructionEventListeners() {
+        // Listen for building construction events
+        document.addEventListener('buildingStarted', (event) => {
+            const { planet, buildingId } = event.detail;
+            const building = Buildings.getDefinition(buildingId);
+            
+            this.showConstructionFeedback(`🏗️ Construcción iniciada: ${building.name} en Planeta ${planet.id}`);
+            
+            if (typeof UI !== 'undefined' && UI.setStatus) {
+                UI.setStatus(`Construyendo ${building.name}...`, 2000);
+            }
+        });
+        
+        document.addEventListener('buildingCompleted', (event) => {
+            const { planet, buildingId } = event.detail;
+            const building = Buildings.getDefinition(buildingId);
+            
+            this.showConstructionFeedback(`✅ Completado: ${building.name} en Planeta ${planet.id}`, 'success');
+            
+            if (typeof UI !== 'undefined' && UI.setStatus) {
+                UI.setStatus(`¡${building.name} completado!`, 2000);
+            }
+        });
+        
+        document.addEventListener('buildingCancelled', (event) => {
+            const { planet, buildingId } = event.detail;
+            const building = Buildings.getDefinition(buildingId);
+            
+            this.showConstructionFeedback(`❌ Cancelado: ${building.name} en Planeta ${planet.id}`, 'error');
+        });
+    },
+
+    showConstructionFeedback(message, type = 'info') {
+        const panel = document.getElementById('constructionFeedback');
+        if (!panel) return;
+        
+        const color = type === 'success' ? '#00ff88' : type === 'error' ? '#ff4444' : '#ffffff';
+        
+        panel.innerHTML = `<div style="color: ${color}; margin-bottom: 5px;">${message}</div>${panel.innerHTML}`;
+        panel.style.display = 'block';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (panel.children.length > 0) {
+                panel.removeChild(panel.lastChild);
+                if (panel.children.length === 0) {
+                    panel.style.display = 'none';
+                }
+            }
+        }, 5000);
+        
+        // Keep only last 3 messages
+        while (panel.children.length > 3) {
+            panel.removeChild(panel.lastChild);
+        }
+    },
+
+    addDebugCommands() {
+        // Add helpful debug commands for testing
+        window.debugBuildings = {
+            test: () => {
+                console.log('🔧 Building System Test Commands:');
+                console.log('- debugBuildings.listAll() - Show all building types');
+                console.log('- debugBuildings.playerPlanets() - Show player planets');
+                console.log('- debugBuildings.constructions() - Show active constructions');
+                console.log('- debugBuildings.resources() - Show current resources');
+            },
+            
+            listAll: () => {
+                if (typeof Buildings !== 'undefined') {
+                    Buildings.debugBuildings();
+                } else {
+                    console.log('❌ Buildings system not loaded');
+                }
+            },
+            
+            playerPlanets: () => {
+                if (GameEngine.planets) {
+                    const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');
+                    console.table(playerPlanets.map(p => ({
+                        ID: p.id,
+                        Ships: `${p.ships}/${p.capacity}`,
+                        Buildings: p.buildings ? Object.keys(p.buildings).length : 0
+                    })));
+                }
+            },
+            
+            constructions: () => {
+                if (typeof BuildingManager !== 'undefined') {
+                    BuildingManager.debugConstructions();
+                } else {
+                    console.log('❌ BuildingManager not loaded');
+                }
+            },
+            
+            resources: () => {
+                if (typeof ResourceManager !== 'undefined') {
+                    console.log('💰 Current Resources:');
+                    console.log(`Metal: ${ResourceManager.getMetal()}`);
+                    console.log(`Energy: ${ResourceManager.getEnergy()}`);
+                } else {
+                    console.log('❌ ResourceManager not loaded');
+                }
+            }
+        };
+        
+        console.log('🔧 Debug commands added! Type debugBuildings.test() to see available commands');
     },
 
     showErrorMessage(error) {
