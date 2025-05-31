@@ -1,0 +1,1 @@
+// Move from js/resourceManager.js - placeholder

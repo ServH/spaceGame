@@ -1,0 +1,1 @@
+// Move from js/buildingUI.js - placeholder

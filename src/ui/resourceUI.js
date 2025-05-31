@@ -1,0 +1,1 @@
+// Move from js/resourceUI.js - placeholder

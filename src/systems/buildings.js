@@ -1,0 +1,1 @@
+// Move from js/buildings.js - placeholder
