@@ -1,4 +1,4 @@
-// Input Manager - ENERGY AS FUEL SYSTEM V2.0
+// Input Manager - ENERGY AS FUEL SYSTEM V2.1 - FIXED CONTROLS
 // Player uses energy for movement, same rules as AI
 const InputManager = {
     selectedPlanet: null,
@@ -8,17 +8,24 @@ const InputManager = {
     tooltip: null,
     isRightClickHeld: false,
     rightClickStartTime: 0,
+    isInitialized: false,
     
     init() {
         this.setupEventListeners();
         this.createTooltip();
-        console.log('🎮 Input Manager initialized - ENERGY AS FUEL SYSTEM');
+        this.isInitialized = true;
+        console.log('🎮 Input Manager initialized - ENERGY AS FUEL SYSTEM V2.1');
     },
 
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
+        if (!canvas) {
+            console.error('❌ Canvas not found - retrying in 100ms');
+            setTimeout(() => this.setupEventListeners(), 100);
+            return;
+        }
         
-        // Mouse events
+        // Mouse events with better error handling
         canvas.addEventListener('click', (e) => this.handleClick(e));
         canvas.addEventListener('contextmenu', (e) => this.handleRightClick(e));
         canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -30,9 +37,13 @@ const InputManager = {
         
         // Prevent context menu
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        console.log('🎮 Event listeners attached successfully');
     },
 
     createTooltip() {
+        if (this.tooltip) return; // Prevent duplicates
+        
         this.tooltip = document.createElement('div');
         this.tooltip.id = 'game-tooltip';
         this.tooltip.style.cssText = `
@@ -52,12 +63,13 @@ const InputManager = {
     },
 
     handleClick(e) {
-        if (e.button !== 0) return; // Only left click
+        if (!this.isInitialized || e.button !== 0) return;
         
         const planet = this.getPlanetAtPosition(e.offsetX, e.offsetY);
         
         if (planet) {
             this.selectPlanet(planet);
+            console.log(`🎯 Planet ${planet.id} selected`);
         } else {
             this.deselectPlanet();
         }
@@ -65,11 +77,17 @@ const InputManager = {
 
     // ENERGY FUEL: Enhanced right click for movement validation
     handleRightClick(e) {
+        if (!this.isInitialized) return;
         e.preventDefault();
         
         const targetPlanet = this.getPlanetAtPosition(e.offsetX, e.offsetY);
         
-        if (!targetPlanet) return;
+        if (!targetPlanet) {
+            console.log('🎯 No planet at click position');
+            return;
+        }
+        
+        console.log(`🎯 Right click on planet ${targetPlanet.id} (${targetPlanet.owner})`);
         
         // Building menu for owned planets
         if (targetPlanet.owner === 'player') {
@@ -98,6 +116,8 @@ const InputManager = {
         const energyCost = CONFIG.calculateMovementCost(shipsToSend, distance);
         const canAfford = ResourceManager.canAffordMovement(shipsToSend, distance);
         
+        console.log(`🚀 Attempting fleet send: ${shipsToSend} ships, distance: ${distance.toFixed(0)}, cost: ${energyCost}`);
+        
         if (!canAfford) {
             const currentEnergy = ResourceManager.getEnergy();
             this.showEnergyInsufficientFeedback(energyCost, currentEnergy, shipsToSend, distance);
@@ -114,6 +134,8 @@ const InputManager = {
                 `⚡ ${shipsToSend} naves enviadas | Coste: ${costInfo.total} energía (${costInfo.perShip}/nave)`, 
                 'success'
             );
+            
+            console.log(`✅ Fleet sent successfully: ${shipsToSend} ships for ${costInfo.total} energy`);
         }
     },
 
@@ -200,10 +222,13 @@ const InputManager = {
     showBuildingMenu(planet, x, y) {
         if (typeof BuildingUI !== 'undefined') {
             BuildingUI.showBuildingMenu(planet, x, y);
+            console.log(`🏗️ Building menu shown for planet ${planet.id}`);
         }
     },
 
     handleMouseMove(e) {
+        if (!this.isInitialized) return;
+        
         this.mouseX = e.offsetX;
         this.mouseY = e.offsetY;
         
@@ -243,15 +268,23 @@ const InputManager = {
     },
 
     handleKeyDown(e) {
+        if (!this.isInitialized) return;
+        
         const key = e.key.toLowerCase();
         
-        if (CONFIG.KEYBOARD.assignments[key]) {
+        // Check if CONFIG and keyboard assignments exist
+        if (CONFIG && CONFIG.KEYBOARD && CONFIG.KEYBOARD.assignments && CONFIG.KEYBOARD.assignments[key]) {
             const planetId = CONFIG.KEYBOARD.assignments[key];
-            const planet = GameEngine.planets.find(p => p.id === planetId);
             
-            if (planet && planet.owner === 'player') {
-                this.selectPlanet(planet);
-                e.preventDefault();
+            // Safe planet lookup
+            if (typeof GameEngine !== 'undefined' && GameEngine.planets) {
+                const planet = GameEngine.planets.find(p => p && p.id === planetId);
+                
+                if (planet && planet.owner === 'player') {
+                    this.selectPlanet(planet);
+                    console.log(`⌨️ Keyboard select: Planet ${planet.id} via key '${key}'`);
+                    e.preventDefault();
+                }
             }
         }
         
@@ -259,12 +292,28 @@ const InputManager = {
         if (e.ctrlKey) {
             switch (key) {
                 case 'e':
-                    ResourceManager.debugInfo();
-                    e.preventDefault();
+                    if (typeof ResourceManager !== 'undefined') {
+                        ResourceManager.debugInfo();
+                        e.preventDefault();
+                    }
                     break;
                 case 'r':
-                    ResourceManager.debugAddEnergy(50);
-                    this.showFeedback('Debug: +50 energía', 'info');
+                    if (typeof ResourceManager !== 'undefined') {
+                        ResourceManager.debugAddEnergy(50);
+                        this.showFeedback('Debug: +50 energía', 'info');
+                        e.preventDefault();
+                    }
+                    break;
+                case 'i':
+                    // Debug input system
+                    console.log('🎮 Input Manager Debug:', {
+                        initialized: this.isInitialized,
+                        selectedPlanet: this.selectedPlanet?.id,
+                        hoveredPlanet: this.hoveredPlanet?.id,
+                        mousePos: {x: this.mouseX, y: this.mouseY},
+                        gameEngineExists: typeof GameEngine !== 'undefined',
+                        planetsCount: GameEngine?.planets?.length || 0
+                    });
                     e.preventDefault();
                     break;
             }
@@ -272,6 +321,8 @@ const InputManager = {
     },
 
     selectPlanet(planet) {
+        if (!planet) return;
+        
         if (this.selectedPlanet) {
             this.selectedPlanet.element.style.strokeWidth = '';
             this.selectedPlanet.element.style.stroke = '';
@@ -284,7 +335,7 @@ const InputManager = {
             planet.element.style.strokeWidth = '3';
             
             // ENERGY FUEL: Show planet info with energy context
-            if (planet.owner === 'player') {
+            if (planet.owner === 'player' && typeof ResourceManager !== 'undefined') {
                 const energyGen = ResourceManager.getPlanetEnergyGeneration(planet);
                 this.showFeedback(
                     `📍 Planeta seleccionado | Energía: +${energyGen.toFixed(1)}/min`, 
@@ -304,18 +355,21 @@ const InputManager = {
 
     // ENERGY FUEL: Enhanced tooltip with energy costs
     showTooltip(planet, x, y) {
+        if (!planet || !this.tooltip) return;
+        
         let content = planet.getTooltipInfo();
         
         // Add energy cost info for potential movements
         if (this.selectedPlanet && this.selectedPlanet.owner === 'player' && 
-            planet !== this.selectedPlanet) {
+            planet !== this.selectedPlanet && typeof Utils !== 'undefined' && typeof CONFIG !== 'undefined') {
             
             const distance = Utils.distance(this.selectedPlanet, planet);
             const ships = Math.floor(this.selectedPlanet.ships / 2);
             
             if (ships > 0) {
                 const costInfo = CONFIG.getMovementCostInfo(ships, distance);
-                const canAfford = ResourceManager.canAffordMovement(ships, distance);
+                const canAfford = typeof ResourceManager !== 'undefined' ? 
+                    ResourceManager.canAffordMovement(ships, distance) : false;
                 
                 content += `<br><hr style="border: 1px solid #444; margin: 8px 0;">`;
                 content += `<strong>Coste de movimiento:</strong><br>`;
@@ -364,17 +418,42 @@ const InputManager = {
         }
     },
 
+    // FIXED: Improved planet detection with better hit detection
     getPlanetAtPosition(x, y) {
-        return GameEngine.planets.find(planet => {
+        if (typeof GameEngine === 'undefined' || !GameEngine.planets) {
+            console.warn('🎯 GameEngine or planets not available for hit detection');
+            return null;
+        }
+        
+        // Find planet with improved hit detection
+        let closestPlanet = null;
+        let closestDistance = Infinity;
+        
+        for (const planet of GameEngine.planets) {
+            if (!planet) continue;
+            
             const distance = Math.sqrt(
                 Math.pow(x - planet.x, 2) + Math.pow(y - planet.y, 2)
             );
-            return distance <= planet.radius;
-        });
+            
+            // Use a slightly larger hit area for better usability
+            const hitRadius = planet.radius + 2;
+            
+            if (distance <= hitRadius && distance < closestDistance) {
+                closestPlanet = planet;
+                closestDistance = distance;
+            }
+        }
+        
+        return closestPlanet;
     },
 
     // ENERGY FUEL: Method to check current energy situation
     getEnergyStatus() {
+        if (typeof ResourceManager === 'undefined') {
+            return { current: 0, generation: 0, level: 'unknown' };
+        }
+        
         const energy = ResourceManager.getEnergy();
         const generation = ResourceManager.getTotalEnergyGeneration();
         
@@ -387,14 +466,28 @@ const InputManager = {
         };
     },
 
+    // Force re-initialization if needed
+    reinitialize() {
+        console.log('🔄 Reinitializing Input Manager...');
+        this.cleanup();
+        this.isInitialized = false;
+        setTimeout(() => this.init(), 100);
+    },
+
     cleanup() {
         if (this.tooltip && this.tooltip.parentNode) {
             this.tooltip.parentNode.removeChild(this.tooltip);
+            this.tooltip = null;
         }
         
         // Remove any feedback messages
         const feedback = document.getElementById('game-feedback');
         if (feedback) feedback.remove();
+        
+        // Reset state
+        this.selectedPlanet = null;
+        this.hoveredPlanet = null;
+        this.isInitialized = false;
     }
 };
 
@@ -412,3 +505,21 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Debug commands available in console
+window.debugInput = {
+    status: () => {
+        console.log('🎮 Input Manager Status:', {
+            initialized: InputManager.isInitialized,
+            selectedPlanet: InputManager.selectedPlanet?.id,
+            hoveredPlanet: InputManager.hoveredPlanet?.id,
+            mousePos: {x: InputManager.mouseX, y: InputManager.mouseY}
+        });
+    },
+    reinit: () => InputManager.reinitialize(),
+    testClick: (x, y) => {
+        const planet = InputManager.getPlanetAtPosition(x, y);
+        console.log(`🎯 Test click at (${x}, ${y}):`, planet ? `Planet ${planet.id}` : 'No planet');
+        return planet;
+    }
+};
