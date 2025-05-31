@@ -1,4 +1,4 @@
-// Input Manager - Action 02 FIXED - Ships should cost only when CREATED, not when SENT
+// Input Manager - Action 02 FIXED - Right-click integration with BuildingUI
 const InputManager = {
     dragState: {
         isDragging: false,
@@ -27,7 +27,7 @@ const InputManager = {
         this.setupMouseEvents();
         this.setupKeyboardEvents();
         this.initialized = true;
-        console.log('🎮 Input Manager initialized - Action 02 (Ships cost metal only when CREATED)');
+        console.log('🎮 Input Manager initialized - Action 02 with Building System integration');
     },
 
     setupMouseEvents() {
@@ -38,7 +38,7 @@ const InputManager = {
             return;
         }
         
-        console.log('🖱️ Setting up mouse events with native SVG coordinates');
+        console.log('🖱️ Setting up mouse events with Building System integration');
         
         canvas.addEventListener('mousedown', (e) => {
             this.handleMouseDown(e);
@@ -56,13 +56,13 @@ const InputManager = {
             this.handleMouseLeave();
         }, false);
 
-        // RIGHT CLICK for building menu (Action 02)
+        // FIXED: Remove contextmenu interference - let BuildingUI handle right-clicks
         canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            // Building menu handled by BuildingUI
+            e.preventDefault(); // Still prevent browser context menu
+            console.log('🖱️ Context menu prevented, BuildingUI should handle right-click');
         }, false);
         
-        console.log('✅ Mouse events setup complete - Action 02');
+        console.log('✅ Mouse events setup complete - BuildingUI integration ready');
     },
 
     setupKeyboardEvents() {
@@ -71,18 +71,28 @@ const InputManager = {
     },
 
     handleMouseDown(e) {
-        e.preventDefault();
+        // FIXED: Don't preventDefault for right-clicks to allow BuildingUI to work
+        if (e.button !== 2) { // Only prevent default for non-right-clicks
+            e.preventDefault();
+        }
+        
         if (UI && UI.hideTooltip) UI.hideTooltip();
         
-        const pos = this.getSVGCoordinates(e);
-        console.log('🖱️ Mouse down at SVG coords:', pos);
-        
-        const planet = this.getPlanetAt(pos.x, pos.y);
-        console.log('🪐 Planet found:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}, Ships: ${planet.ships}` : 'None');
-        
-        if (planet && planet.owner === 'player' && planet.ships > 0) {
-            console.log('🚀 Starting drag from planet', planet.id);
-            this.startDrag(planet);
+        // Only handle left-click for dragging (button 0)
+        if (e.button === 0) {
+            const pos = this.getSVGCoordinates(e);
+            console.log('🖱️ Left mouse down at SVG coords:', pos);
+            
+            const planet = this.getPlanetAt(pos.x, pos.y);
+            console.log('🪐 Planet found:', planet ? `ID: ${planet.id}, Owner: ${planet.owner}, Ships: ${planet.ships}` : 'None');
+            
+            if (planet && planet.owner === 'player' && planet.ships > 0) {
+                console.log('🚀 Starting drag from planet', planet.id);
+                this.startDrag(planet);
+            }
+        } else if (e.button === 2) {
+            // Right-click - let BuildingUI handle this
+            console.log('🖱️ Right-click detected - BuildingUI should handle this');
         }
     },
 
@@ -95,8 +105,8 @@ const InputManager = {
     },
 
     handleMouseUp(e) {
-        if (this.dragState.isDragging) {
-            console.log('🖱️ Mouse up - ending drag');
+        if (this.dragState.isDragging && e.button === 0) { // Only end drag on left-click release
+            console.log('🖱️ Left mouse up - ending drag');
             this.endDrag(e);
         }
     },
@@ -304,7 +314,7 @@ const InputManager = {
         }
     },
 
-    // FIXED: Ships are FREE to send, they only cost metal when CREATED by planets
+    // OPCIÓN A: Fleet sending is FREE (only ship creation costs metal)
     executeFleetCommand(origin, destination) {
         if (!origin || !destination || origin === destination) return;
         if (origin.owner !== 'player') return;
@@ -314,30 +324,48 @@ const InputManager = {
         console.log(`🚀 Executing fleet command: ${shipsToSend} ships from ${origin.id} to ${destination.id}`);
         
         if (shipsToSend >= 1) {
-            // FIXED: No resource cost for SENDING ships, only check if we have enough ships
-            if (origin.ships >= shipsToSend) {
-                // Create the fleet (FREE - no resource cost)
-                const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
-                if (fleet) {
-                    this.showFleetLaunch(origin, destination, shipsToSend);
+            // OPCIÓN A: Check if player has enough metal to send fleet (1 metal per ship)
+            const metalCost = shipsToSend;
+            
+            if (typeof ResourceManager !== 'undefined') {
+                const currentMetal = ResourceManager.getMetal();
+                
+                if (currentMetal >= metalCost && origin.ships >= shipsToSend) {
+                    // Pay metal cost for sending
+                    ResourceManager.spendMetal(metalCost);
                     
-                    // Show fleet launched notification
-                    if (UI && UI.showFleetLaunched) {
-                        UI.showFleetLaunched(
-                            origin.assignedKey || `P${origin.id}`,
-                            destination.assignedKey || `P${destination.id}`,
-                            shipsToSend
-                        );
+                    // Create the fleet
+                    const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
+                    if (fleet) {
+                        this.showFleetLaunch(origin, destination, shipsToSend);
+                        
+                        // Show fleet launched notification with cost
+                        if (UI && UI.showFleetLaunched) {
+                            UI.showFleetLaunched(
+                                origin.assignedKey || `P${origin.id}`,
+                                destination.assignedKey || `P${destination.id}`,
+                                shipsToSend,
+                                metalCost
+                            );
+                        }
+                    }
+                } else {
+                    // Not enough metal or ships
+                    const reason = currentMetal < metalCost ? 
+                        `No hay suficiente metal (necesitas ${metalCost})` :
+                        `No hay suficientes naves en planeta ${origin.assignedKey}`;
+                        
+                    if (UI && UI.showNotification) {
+                        UI.showNotification(reason, 'warning', 3000);
                     }
                 }
             } else {
-                // Not enough ships
-                if (UI && UI.showNotification) {
-                    UI.showNotification(
-                        `No hay suficientes naves en planeta ${origin.assignedKey}`,
-                        'warning',
-                        3000
-                    );
+                // Fallback if ResourceManager not available
+                if (origin.ships >= shipsToSend) {
+                    const fleet = FleetManager.createFleet(origin, destination, shipsToSend, 'player');
+                    if (fleet) {
+                        this.showFleetLaunch(origin, destination, shipsToSend);
+                    }
                 }
             }
         }
@@ -391,22 +419,6 @@ const InputManager = {
             if (planet.assignedKey) {
                 info = `<strong>${ownerName} [${planet.assignedKey.toUpperCase()}]</strong><br>Naves: ${Math.floor(planet.ships)}/${planet.capacity}`;
             }
-        }
-        
-        // Add production information for player planets
-        if (planet.owner === 'player' && typeof ResourceManager !== 'undefined') {
-            const resourceInfo = ResourceManager.getPlanetResourceInfo(planet);
-            if (resourceInfo) {
-                info += `<br>Producción: ${resourceInfo.metal.generation}/min Metal`;
-                if (resourceInfo.energy.generation > 0) {
-                    info += `<br>Energía: +${resourceInfo.energy.generation}/min`;
-                }
-            }
-        }
-        
-        // Action 02: Add building info hint for player planets
-        if (planet.owner === 'player') {
-            info += `<br><small style="color: #00ff88">Click derecho para construir edificios</small>`;
         }
         
         if (UI && UI.showTooltip) {
