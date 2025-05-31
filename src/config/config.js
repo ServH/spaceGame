@@ -19,6 +19,13 @@ const CONFIG = {
         CAPACITY_MULTIPLIER: 2.5
     },
 
+    // Visual settings
+    VISUAL: {
+        PLANET_MIN_RADIUS: 15,
+        PLANET_MAX_RADIUS: 35,
+        HOVER_GLOW: '#ffffff'
+    },
+
     // Fleet mechanics
     FLEET: {
         SPEED: 80,
