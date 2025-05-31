@@ -102,25 +102,21 @@
     <script src="src/ui/ui.js"></script>
     
     <!-- Game Initialization -->
-    <script src="src/game.js"></script>
+    <script src="src/core/game.js"></script>
 
     <!-- Development Tools -->
     <script>
         const perfMonitor = {
             start: Date.now(),
-            
             checkLoadTime() {
-                const total = Date.now() - this.start;
-                console.log(`🚀 Modular game loaded in ${total}ms`);
+                console.log(`🚀 Modular game loaded in ${Date.now() - this.start}ms`);
             }
         };
         
         window.addEventListener('load', () => perfMonitor.checkLoadTime());
         
-        // Enhanced modular debug tools
         window.debugModular = {
             checkStructure() {
-                console.log('🏗️ Modular Structure Status:');
                 const modules = {
                     'Config': ['CONFIG', 'BalanceConfig'],
                     'Core': ['Utils', 'GameEngine'],
@@ -136,14 +132,6 @@
                         console.log(`  ${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
                     });
                 });
-            },
-            
-            showMigration() {
-                console.log('📦 Migration Complete:');
-                console.log('✅ All files moved to /src/ structure');
-                console.log('✅ Obsolete files moved to _delete/');
-                console.log('✅ Documentation organized in docs/');
-                console.log('🎯 Ready for Action 03!');
             }
         };
     </script>
