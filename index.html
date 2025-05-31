@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Game V1.4 Evolution - Energy Fuel System</title>
+    <title>Space Game V2.5 - Refactored Engine</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="game-container">
-        <!-- UI Overlay - CLEANED UP -->
+        <!-- UI Overlay - OPTIMIZED -->
         <div class="ui-overlay">
             <div class="ui-top">
                 <!-- Left: Player Stats -->
@@ -73,19 +73,17 @@
         </svg>
     </div>
 
-    <!-- CRITICAL: Load order fixed for CONFIG dependency -->
-    <!-- Base Configuration (Must be first) -->
+    <!-- OPTIMIZED: Load order for refactored architecture -->
+    <!-- Core Configuration (Must be first) -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     
-    <!-- Balance Configuration (After CONFIG is loaded) -->
+    <!-- Balance Configuration (Consolidated) -->
     <script src="js/balanceConfig.js"></script>
     
-    <!-- Evolution Action 01: Resource System -->
+    <!-- Resource & Building Systems -->
     <script src="js/resourceManager.js"></script>
     <script src="js/resourceUI.js"></script>
-    
-    <!-- Evolution Action 02: Building System -->
     <script src="js/buildings.js"></script>
     <script src="js/buildingManager.js"></script>
     <script src="js/buildingUI.js"></script>
@@ -96,24 +94,40 @@
     <script src="js/gameEngine.js"></script>
     <script src="js/input.js"></script>
     <script src="js/ai.js"></script>
-    <script src="js/enhancedAI.js"></script>
     <script src="js/animations.js"></script>
     <script src="js/ui.js"></script>
     
     <!-- Game Initialization (Must be last) -->
     <script src="js/game.js"></script>
 
-    <!-- Live Reload for Development -->
+    <!-- Development Tools -->
     <script>
-        // Simple live reload for development
-        console.log('🔄 Live reload enabled.');
-        let reloadCheckInterval = setInterval(() => {
-            fetch(window.location.href, { method: 'HEAD' })
-                .catch(() => {
-                    // If fetch fails, likely server restarted, reload
-                    setTimeout(() => window.location.reload(), 500);
+        // Performance monitoring
+        const perfMonitor = {
+            start: Date.now(),
+            checkLoadTime() {
+                console.log(`🚀 Game loaded in ${Date.now() - this.start}ms`);
+            }
+        };
+        
+        window.addEventListener('load', () => perfMonitor.checkLoadTime());
+        
+        // Debug helpers
+        window.debugRefactor = {
+            listLoadedModules() {
+                const modules = ['CONFIG', 'BalanceConfig', 'ResourceManager', 'Buildings', 'AI', 'GameEngine'];
+                modules.forEach(mod => {
+                    console.log(`${mod}: ${typeof window[mod] !== 'undefined' ? '✅' : '❌'}`);
                 });
-        }, 2000);
+            },
+            showCodeReduction() {
+                console.log('🎯 Refactor Stats:');
+                console.log('- Eliminated files: gameStubs.js, gameMenu.js, gameModes.js, uiExtensions.js');
+                console.log('- Consolidated: balance.js → balanceConfig.js');
+                console.log('- Consolidated: enhancedAI.js → ai.js');
+                console.log('- Estimated size reduction: ~15KB');
+            }
+        };
     </script>
 </body>
 </html>
