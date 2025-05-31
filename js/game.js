@@ -82,6 +82,12 @@ const Game = {
         GameEngine.init();
         console.log('✅ Game engine initialized');
         
+        // Initialize input system - CRITICAL FIX
+        if (typeof InputManager !== 'undefined') {
+            InputManager.init();
+            console.log('🎮 Input system initialized');
+        }
+        
         // Initialize UI extensions for classic mode
         if (typeof UIExtensions !== 'undefined') {
             UIExtensions.init();
@@ -374,6 +380,11 @@ const Game = {
         // Clear resource state
         if (typeof ResourceManager !== 'undefined') {
             ResourceManager.reset();
+        }
+        
+        // Clear input state
+        if (typeof InputManager !== 'undefined') {
+            InputManager.cleanup();
         }
         
         // Restart
