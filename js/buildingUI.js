@@ -197,7 +197,7 @@ const BuildingUI = {
             box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
         `;
 
-        // Planet header
+        // Planet header - FIXED: Convert planet.id to string
         const header = document.createElement('div');
         header.style.cssText = `
             color: #00ff88;
@@ -206,7 +206,7 @@ const BuildingUI = {
             border-bottom: 1px solid #00ff88;
             padding-bottom: 5px;
         `;
-        header.textContent = `PLANETA ${planet.id.toUpperCase()} - CONSTRUCCIÓN`;
+        header.textContent = `PLANETA ${String(planet.id).toUpperCase()} - CONSTRUCCIÓN`;
         menu.appendChild(header);
 
         // Planet info - OPCIÓN A specific
