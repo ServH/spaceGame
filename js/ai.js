@@ -1,13 +1,16 @@
-// AI Controller - OPCIÓN A GALCON - Resource-aware AI optimized for 1 metal ship sending cost
+// AI Controller - OPCIÓN A GALCON + Building System Integration
 const AI = {
     lastDecision: 0,
+    lastBuildingDecision: 0,
     strategy: 'balanced',
     difficulty: 'normal',
+    enableBuildingSystem: false,
     
     init() {
         this.lastDecision = Date.now();
+        this.lastBuildingDecision = Date.now();
         this.strategy = 'balanced';
-        console.log('🤖 AI initialized - OPCIÓN A GALCON with 1 metal ship costs');
+        console.log('🤖 AI initialized - OPCIÓN A GALCON with Building System');
     },
 
     update() {
@@ -19,6 +22,12 @@ const AI = {
         if (now - this.lastDecision >= decisionInterval) {
             this.makeDecision();
             this.lastDecision = now;
+        }
+
+        // Building decisions less frequent (every 10 seconds)
+        if (this.enableBuildingSystem && now - this.lastBuildingDecision >= 10000) {
+            this.makeBuildingDecision();
+            this.lastBuildingDecision = now;
         }
     },
 
@@ -41,6 +50,23 @@ const AI = {
         if (action) {
             this.executeAction(action);
         }
+    },
+
+    // Building decision making for AI
+    makeBuildingDecision() {
+        if (!this.enableBuildingSystem || typeof BuildingManager === 'undefined') return;
+
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');
+        
+        aiPlanets.forEach(planet => {
+            // Random chance to consider building (30% each decision cycle)
+            if (Math.random() < 0.3) {
+                const buildAttempt = BuildingManager.tryAIConstruction(planet);
+                if (buildAttempt) {
+                    console.log(`🤖 AI building decision successful on planet ${planet.id}`);
+                }
+            }
+        });
     },
 
     analyzeGameState() {
