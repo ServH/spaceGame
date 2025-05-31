@@ -1,4 +1,4 @@
-// Building UI - OPCIÓN A - FIXED right-click detection + browser context menu prevention
+// Building UI - OPCIÓN A - Complete context menu prevention for all player planets
 const BuildingUI = {
     
     currentPlanet: null,
@@ -8,7 +8,7 @@ const BuildingUI = {
     init() {
         if (this.initialized) return;
         
-        console.log('🖥️ Initializing Building UI - MOUSEDOWN FIX...');
+        console.log('🖥️ Initializing Building UI - Complete context menu prevention...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -20,7 +20,7 @@ const BuildingUI = {
         this.initialized = true;
     },
 
-    // FIXED: Setup event listeners with proper context menu prevention
+    // FIXED: Complete context menu prevention for entire game area
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) {
@@ -28,7 +28,7 @@ const BuildingUI = {
             return;
         }
 
-        console.log('🖥️ Setting up BuildingUI event listeners with context menu prevention...');
+        console.log('🖥️ Setting up complete context menu prevention...');
 
         // FIXED: Use mousedown with button detection
         canvas.addEventListener('mousedown', (event) => {
@@ -50,22 +50,61 @@ const BuildingUI = {
             }
         }, true); // Use capture phase for better event interception
 
-        // FIXED: Stronger context menu prevention
+        // FIXED: Multiple context menu prevention layers
+        
+        // Layer 1: Canvas level
         canvas.addEventListener('contextmenu', (event) => {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
-            console.log('🚫 Context menu completely prevented');
+            console.log('🚫 Canvas context menu prevented');
             return false;
-        }, true); // Use capture phase
+        }, true);
 
-        // Also prevent on the entire document for extra safety
+        // Layer 2: Document level for the entire game area
         document.addEventListener('contextmenu', (event) => {
-            // Only prevent if we're over the canvas
-            if (event.target.closest('#gameCanvas')) {
+            // Check if we're in the game area (canvas or its children)
+            const gameContainer = document.querySelector('.game-container');
+            const canvas = document.getElementById('gameCanvas');
+            
+            if (event.target === canvas || 
+                event.target.closest('#gameCanvas') ||
+                event.target.closest('.game-container')) {
+                
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+                console.log('🚫 Document-level context menu prevented for game area');
+                return false;
+            }
+        }, true);
+
+        // Layer 3: Specific prevention for SVG elements (planets)
+        document.addEventListener('contextmenu', (event) => {
+            // Check if target is an SVG element (planet)
+            if (event.target.tagName === 'circle' || 
+                event.target.tagName === 'text' ||
+                event.target.closest('svg')) {
+                
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                console.log('🚫 SVG element context menu prevented');
+                return false;
+            }
+        }, true);
+
+        // Layer 4: Body level backup (last resort)
+        document.body.addEventListener('contextmenu', (event) => {
+            // Only prevent if we're over game elements
+            if (event.target.closest('#gameCanvas') || 
+                event.target.closest('.game-container') ||
+                event.target.id === 'gameCanvas') {
+                
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                console.log('🚫 Body-level context menu prevented for game elements');
                 return false;
             }
         }, true);
@@ -78,7 +117,7 @@ const BuildingUI = {
             }
         });
         
-        console.log('✅ Building UI event listeners setup complete - Context menu fully prevented');
+        console.log('✅ Complete context menu prevention setup - 4 layers active');
     },
 
     // FIXED: Handle right-click with proper coordinate detection
@@ -151,13 +190,14 @@ const BuildingUI = {
             if (distance <= tolerance && distance < closestDistance) {
                 closestDistance = distance;
                 closestPlanet = planet;
-                console.log(`🎯 Found planet: ${planet.id} at distance ${distance.toFixed(1)}`);
+                console.log(`🎯 Found planet: ${planet.id} at distance ${distance.toFixed(1)}, owner: ${planet.owner}`);
             }
         });
         
         console.log('🔍 Search complete:', {
             found: !!closestPlanet,
             planetId: closestPlanet ? closestPlanet.id : 'none',
+            owner: closestPlanet ? closestPlanet.owner : 'none',
             finalDistance: closestDistance !== Infinity ? closestDistance.toFixed(1) : 'N/A'
         });
         
