@@ -13,7 +13,7 @@ const GameEngine = {
         // PRIORITY: Initialize BuildingUI FIRST before any other input systems
         this.initBuildingSystemFirst();
         
-        // Action 02: Initialize other evolution systems
+        // Action 02: Initialize other evolution systems (excluding BalanceConfig)
         this.initEvolutionSystems();
         
         this.generatePlanets();
@@ -74,12 +74,8 @@ const GameEngine = {
         
         // Building system already initialized above with priority
         
-        // Initialize balance config for classic mode
-        if (typeof BalanceConfig !== 'undefined') {
-            BalanceConfig.init();
-        }
-        
-        console.log('✅ OPCIÓN A GALCON Evolution Systems initialized');
+        // NOTE: BalanceConfig is now initialized in game.js to avoid duplicate calls
+        console.log('✅ OPCIÓN A GALCON Evolution Systems initialized (BalanceConfig handled by Game)');
     },
 
     setupCanvas() {
@@ -132,9 +128,9 @@ const GameEngine = {
     },
 
     assignInitialPlanets() {
-        // OPCIÓN A: Better starting conditions
+        // OPCIÓN A: Better starting conditions based on BalanceConfig if available
         const startShips = (typeof BalanceConfig !== 'undefined' && BalanceConfig.getCurrentSettings) ? 
-                          BalanceConfig.getCurrentSettings().startShips : 15;
+                          BalanceConfig.getCurrentSettings()?.startShips || 15 : 15;
         
         // Player gets first planet
         this.planets[0].owner = 'player';
