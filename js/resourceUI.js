@@ -265,7 +265,7 @@ const ResourceUI = {
         if (!ResourceManager) return;
 
         const metal = ResourceManager.getMetal();
-        const capacity = ResourceManager.getTotalStorageCapacity();
+        const capacity = ResourceManager.getTotalMetalStorageCapacity();
         const generation = ResourceManager.getTotalMetalGeneration();
         
         // Update compact display
