@@ -1,4 +1,4 @@
-// Building UI - OPCIÓN A - Complete context menu prevention for all player planets
+// Building UI - ULTRA SIMPLIFIED - Direct HTML approach for absolute control
 const BuildingUI = {
     
     currentPlanet: null,
@@ -8,130 +8,86 @@ const BuildingUI = {
     init() {
         if (this.initialized) return;
         
-        console.log('🖥️ Initializing Building UI - Complete context menu prevention...');
+        console.log('🖥️ Initializing Building UI - ULTRA SIMPLIFIED APPROACH...');
         
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
-        } else {
-            this.setupEventListeners();
-        }
+        // Immediate setup - no waiting
+        this.setupEventListeners();
         
         this.initialized = true;
     },
 
-    // FIXED: Complete context menu prevention for entire game area
+    // ULTRA SIMPLIFIED: Direct approach with immediate effect
     setupEventListeners() {
-        const canvas = document.getElementById('gameCanvas');
-        if (!canvas) {
-            console.error('❌ Canvas not found for BuildingUI');
-            return;
-        }
+        console.log('🖥️ Setting up ULTRA SIMPLIFIED BuildingUI...');
 
-        console.log('🖥️ Setting up complete context menu prevention...');
-
-        // FIXED: Use mousedown with button detection
-        canvas.addEventListener('mousedown', (event) => {
-            // Check if it's right-click (button 2)
-            if (event.button === 2) {
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                
-                console.log('🖱️ RIGHT MOUSEDOWN DETECTED!', {
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    button: event.button,
-                    target: event.target.tagName
-                });
-                
-                this.handleRightClick(event);
-                return false; // Extra prevention
-            }
-        }, true); // Use capture phase for better event interception
-
-        // FIXED: Multiple context menu prevention layers
-        
-        // Layer 1: Canvas level
-        canvas.addEventListener('contextmenu', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            console.log('🚫 Canvas context menu prevented');
-            return false;
-        }, true);
-
-        // Layer 2: Document level for the entire game area
+        // APPROACH 1: Document level with immediate prevention
         document.addEventListener('contextmenu', (event) => {
-            // Check if we're in the game area (canvas or its children)
-            const gameContainer = document.querySelector('.game-container');
             const canvas = document.getElementById('gameCanvas');
-            
-            if (event.target === canvas || 
-                event.target.closest('#gameCanvas') ||
-                event.target.closest('.game-container')) {
-                
+            if (event.target === canvas || event.target.closest('#gameCanvas') || event.target.closest('svg')) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-                console.log('🚫 Document-level context menu prevented for game area');
+                console.log('🚫 DOCUMENT: Context menu prevented');
                 return false;
             }
         }, true);
 
-        // Layer 3: Specific prevention for SVG elements (planets)
-        document.addEventListener('contextmenu', (event) => {
-            // Check if target is an SVG element (planet)
-            if (event.target.tagName === 'circle' || 
-                event.target.tagName === 'text' ||
-                event.target.closest('svg')) {
-                
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                console.log('🚫 SVG element context menu prevented');
-                return false;
-            }
-        }, true);
-
-        // Layer 4: Body level backup (last resort)
+        // APPROACH 2: Body level backup
         document.body.addEventListener('contextmenu', (event) => {
-            // Only prevent if we're over game elements
-            if (event.target.closest('#gameCanvas') || 
-                event.target.closest('.game-container') ||
-                event.target.id === 'gameCanvas') {
-                
+            if (event.target.closest('#gameCanvas') || event.target.tagName === 'circle' || event.target.tagName === 'text') {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-                console.log('🚫 Body-level context menu prevented for game elements');
+                console.log('🚫 BODY: Context menu prevented');
                 return false;
+            }
+        }, true);
+
+        // APPROACH 3: Window level ultimate backup
+        window.addEventListener('contextmenu', (event) => {
+            if (event.target.closest('#gameCanvas') || event.target.id === 'gameCanvas') {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                console.log('🚫 WINDOW: Context menu prevented');
+                return false;
+            }
+        }, true);
+
+        // Mouse handler for building menu
+        document.addEventListener('mousedown', (event) => {
+            if (event.button === 2) { // Right click
+                const canvas = document.getElementById('gameCanvas');
+                if (event.target === canvas || event.target.closest('#gameCanvas')) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    
+                    console.log('🖱️ MOUSEDOWN: Right-click detected');
+                    this.handleRightClick(event);
+                    return false;
+                }
             }
         }, true);
 
         // Click to close building menu
         document.addEventListener('click', (event) => {
             if (this.menuVisible && !event.target.closest('.building-menu')) {
-                console.log('🔒 Closing building menu due to outside click');
                 this.hideBuildingMenu();
             }
         });
         
-        console.log('✅ Complete context menu prevention setup - 4 layers active');
+        console.log('✅ ULTRA SIMPLIFIED BuildingUI setup complete');
     },
 
-    // FIXED: Handle right-click with proper coordinate detection
+    // Handle right-click with coordinate detection
     handleRightClick(event) {
-        console.log('🖱️ HandleRightClick called with event:', {
-            clientX: event.clientX,
-            clientY: event.clientY,
-            button: event.button,
-            type: event.type,
-            timeStamp: event.timeStamp
-        });
+        console.log('🖱️ HandleRightClick:', { x: event.clientX, y: event.clientY });
         
-        // Use proper SVG coordinate transformation
+        // Use SVG coordinate transformation
         const svg = document.getElementById('gameCanvas');
+        if (!svg) return;
+        
         const pt = svg.createSVGPoint();
         pt.x = event.clientX;
         pt.y = event.clientY;
@@ -140,65 +96,37 @@ const BuildingUI = {
         const gameX = transformed.x;
         const gameY = transformed.y;
         
-        console.log('🎯 Coordinate conversion:', {
-            screen: { x: event.clientX, y: event.clientY },
-            game: { x: gameX.toFixed(1), y: gameY.toFixed(1) }
-        });
+        console.log('🎯 Game coordinates:', { x: gameX.toFixed(1), y: gameY.toFixed(1) });
         
-        // Find clicked planet using the SAME method as InputManager
+        // Find planet
         const planet = this.findPlanetAt(gameX, gameY);
         
-        console.log('🪐 Planet search result:', {
-            found: !!planet,
-            planetId: planet ? planet.id : 'none',
-            owner: planet ? planet.owner : 'none',
-            ships: planet ? planet.ships : 'N/A'
-        });
-        
         if (planet && planet.owner === 'player') {
-            console.log('🏗️ SHOWING BUILDING MENU for player planet', planet.id);
+            console.log('🏗️ SHOWING MENU for player planet', planet.id);
             this.showBuildingMenu(planet, event.clientX, event.clientY);
         } else {
-            console.log('❌ NOT showing menu:', {
-                reason: !planet ? 'No planet found' : 
-                       planet.owner !== 'player' ? `Planet owned by ${planet.owner}` : 'Unknown'
-            });
+            console.log('❌ NOT showing menu:', planet ? `owner: ${planet.owner}` : 'no planet');
             this.hideBuildingMenu();
         }
     },
 
-    // Use SAME planet detection as InputManager
+    // Find planet at coordinates
     findPlanetAt(x, y) {
-        if (!GameEngine || !GameEngine.planets) {
-            console.warn('❌ No GameEngine or planets available');
-            return null;
-        }
-        
-        console.log(`🔍 Searching for planet at (${x.toFixed(1)}, ${y.toFixed(1)}) among ${GameEngine.planets.length} planets`);
+        if (!GameEngine || !GameEngine.planets) return null;
         
         let closestPlanet = null;
         let closestDistance = Infinity;
         
-        GameEngine.planets.forEach((planet, index) => {
+        GameEngine.planets.forEach(planet => {
             const dx = planet.x - x;
             const dy = planet.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // SAME tolerance as InputManager for consistency
             const tolerance = Math.max(planet.radius + 15, 30);
             
             if (distance <= tolerance && distance < closestDistance) {
                 closestDistance = distance;
                 closestPlanet = planet;
-                console.log(`🎯 Found planet: ${planet.id} at distance ${distance.toFixed(1)}, owner: ${planet.owner}`);
             }
-        });
-        
-        console.log('🔍 Search complete:', {
-            found: !!closestPlanet,
-            planetId: closestPlanet ? closestPlanet.id : 'none',
-            owner: closestPlanet ? closestPlanet.owner : 'none',
-            finalDistance: closestDistance !== Infinity ? closestDistance.toFixed(1) : 'N/A'
         });
         
         return closestPlanet;
@@ -206,40 +134,32 @@ const BuildingUI = {
 
     // Show building menu
     showBuildingMenu(planet, screenX, screenY) {
-        console.log('🏗️ Creating building menu for planet', planet.id, 'at screen position', screenX, screenY);
+        console.log('🏗️ Creating menu for planet', planet.id);
         
         this.currentPlanet = planet;
-        this.hideBuildingMenu(); // Close any existing menu
+        this.hideBuildingMenu();
         
         const menu = this.createBuildingMenu(planet);
         document.body.appendChild(menu);
         
         // Position menu
         const rect = menu.getBoundingClientRect();
-        let x = screenX;
-        let y = screenY;
-        
-        // Keep menu on screen
-        if (x + rect.width > window.innerWidth) {
-            x = window.innerWidth - rect.width - 10;
-        }
-        if (y + rect.height > window.innerHeight) {
-            y = window.innerHeight - rect.height - 10;
-        }
+        let x = Math.min(screenX, window.innerWidth - rect.width - 10);
+        let y = Math.min(screenY, window.innerHeight - rect.height - 10);
         
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
         
         this.menuVisible = true;
-        console.log('✅ Building menu displayed successfully at', x, y);
+        console.log('✅ Menu displayed at', x, y);
     },
 
     // Create building menu DOM
     createBuildingMenu(planet) {
-        console.log('🏗️ Creating building menu DOM for planet', planet.id);
-        
         const menu = document.createElement('div');
         menu.className = 'building-menu';
+        
+        // Ultra-secure styling to prevent any context menu
         menu.style.cssText = `
             position: fixed;
             background: rgba(0, 0, 0, 0.95);
@@ -249,12 +169,25 @@ const BuildingUI = {
             color: white;
             font-family: 'Courier New', monospace;
             font-size: 12px;
-            z-index: 2000;
+            z-index: 9999;
             min-width: 280px;
             box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            pointer-events: auto;
         `;
 
-        // Planet header - FIXED: Convert planet.id to string
+        // Prevent context menu on the menu itself
+        menu.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+
+        // Header
         const header = document.createElement('div');
         header.style.cssText = `
             color: #00ff88;
@@ -263,14 +196,12 @@ const BuildingUI = {
             border-bottom: 1px solid #00ff88;
             padding-bottom: 5px;
         `;
-        header.textContent = `PLANETA ${String(planet.id).toUpperCase()} - CONSTRUCCIÓN`;
+        header.textContent = `PLANETA ${String(planet.id)} - CONSTRUCCIÓN`;
         menu.appendChild(header);
 
-        // Planet info - OPCIÓN A specific
+        // Planet info
         const info = document.createElement('div');
-        info.style.marginBottom = '15px';
-        info.style.fontSize = '11px';
-        info.style.color = '#ccc';
+        info.style.cssText = 'margin-bottom: 15px; font-size: 11px; color: #ccc;';
         
         const completedBuildings = BuildingManager ? BuildingManager.getCompletedBuildings(planet) : [];
         const constructing = BuildingManager ? BuildingManager.getConstructionQueue(planet) : [];
@@ -282,7 +213,7 @@ const BuildingUI = {
         `;
         menu.appendChild(info);
 
-        // Current resources
+        // Resources
         const resourceInfo = document.createElement('div');
         resourceInfo.style.cssText = `
             background: rgba(0, 255, 136, 0.1);
@@ -295,46 +226,30 @@ const BuildingUI = {
         const metal = ResourceManager ? ResourceManager.getMetal() : 0;
         const energy = ResourceManager ? ResourceManager.getEnergy() : 0;
         
-        resourceInfo.innerHTML = `
-            🔩 Metal: ${metal} | ⚡ Energy: ${energy}<br>
-            <small style="color: #ffa500">Envío de flotas: 1 metal/nave</small>
-        `;
+        resourceInfo.innerHTML = `🔩 Metal: ${metal} | ⚡ Energy: ${energy}`;
         menu.appendChild(resourceInfo);
 
-        // Available buildings
+        // Buildings title
         const buildingsTitle = document.createElement('div');
-        buildingsTitle.style.cssText = `
-            color: #00ff88;
-            font-weight: bold;
-            margin-bottom: 8px;
-        `;
+        buildingsTitle.style.cssText = 'color: #00ff88; font-weight: bold; margin-bottom: 8px;';
         buildingsTitle.textContent = 'EDIFICIOS DISPONIBLES:';
         menu.appendChild(buildingsTitle);
 
-        // Add buildings if Buildings object exists
+        // Add buildings
         if (typeof Buildings !== 'undefined') {
             Buildings.getAllTypes().forEach(buildingId => {
                 const buildingOption = this.createBuildingOption(planet, buildingId);
                 menu.appendChild(buildingOption);
             });
-        } else {
-            const errorMsg = document.createElement('div');
-            errorMsg.style.color = '#ff6666';
-            errorMsg.textContent = 'Error: Buildings system not loaded';
-            menu.appendChild(errorMsg);
         }
 
-        console.log('✅ Building menu DOM created successfully');
         return menu;
     },
 
-    // Create building option button
+    // Create building option
     createBuildingOption(planet, buildingId) {
         const building = Buildings.getDefinition(buildingId);
-        if (!building) {
-            console.error('❌ Building definition not found for', buildingId);
-            return document.createElement('div');
-        }
+        if (!building) return document.createElement('div');
         
         const playerResources = BuildingManager ? BuildingManager.getPlayerResources() : { metal: 0, energy: 0 };
         const canAfford = Buildings.canAfford(buildingId, playerResources);
@@ -351,7 +266,17 @@ const BuildingUI = {
             background: ${enabled ? 'rgba(0, 255, 136, 0.1)' : 'rgba(102, 102, 102, 0.1)'};
             color: ${enabled ? 'white' : '#999'};
             transition: background 0.2s;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
         `;
+
+        // Prevent context menu on building options
+        option.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
 
         option.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 3px;">
@@ -375,17 +300,13 @@ const BuildingUI = {
             });
 
             option.addEventListener('click', () => {
-                console.log(`🏗️ User clicked to build ${building.name} on planet ${planet.id}`);
+                console.log(`🏗️ Building ${building.name} on planet ${planet.id}`);
                 
                 if (BuildingManager && BuildingManager.startConstruction) {
                     if (BuildingManager.startConstruction(planet, buildingId)) {
-                        console.log('✅ Construction started successfully');
+                        console.log('✅ Construction started');
                         this.hideBuildingMenu();
-                    } else {
-                        console.log('❌ Failed to start construction');
                     }
-                } else {
-                    console.error('❌ BuildingManager not available');
                 }
             });
         }
@@ -398,18 +319,15 @@ const BuildingUI = {
         const existingMenu = document.querySelector('.building-menu');
         if (existingMenu) {
             existingMenu.remove();
-            console.log('🔒 Building menu removed');
+            console.log('🔒 Menu removed');
         }
         
         this.menuVisible = false;
         this.currentPlanet = null;
     },
 
-    // Update planet buildings display (called by BuildingManager)
+    // Update planet buildings display
     updatePlanetBuildings(planet) {
-        console.log('🔄 Updating building display for planet', planet.id);
-        
-        // If the menu is open for this planet, refresh it
         if (this.menuVisible && this.currentPlanet === planet) {
             const existingMenu = document.querySelector('.building-menu');
             if (existingMenu) {
