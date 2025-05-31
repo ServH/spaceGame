@@ -1,1 +1,330 @@
-// Building Definitions - ENERGY AS FUEL SYSTEM V2.0\nconst Buildings = {\n    \n    // Building type definitions - REBALANCED FOR ENERGY FUEL\n    types: {\n        shipyard: {\n            id: 'shipyard',\n            name: 'Astillero',\n            icon: '🏭',\n            description: '+50% velocidad de producción de naves',\n            cost: {\n                metal: 60,  // Reduced cost (metal is scarcer)\n                energy: 0\n            },\n            buildTime: 60000, // 60 seconds\n            maxLevel: 1,\n            effects: {\n                shipProductionRate: 1.5 // 50% faster ship production\n            },\n            visual: {\n                color: '#4a90e2',\n                size: 'medium'\n            }\n        },\n        \n        research_lab: {\n            id: 'research_lab',\n            name: 'Laboratorio de Energía',\n            icon: '🔬',\n            description: '+6 energía/min + puntos de investigación',\n            cost: {\n                metal: 40,  // Cheaper - very important building\n                energy: 15  // Small energy investment\n            },\n            buildTime: 50000, // Faster build - 50 seconds\n            maxLevel: 1,\n            effects: {\n                energyGeneration: 6.0,     // +6 energy per minute (CRITICAL)\n                researchPoints: 1.0        // For future tech tree\n            },\n            visual: {\n                color: '#9b59b6',\n                size: 'medium'\n            },\n            // ENERGY FUEL: Special properties\n            priority: 'critical',\n            aiPriority: 90,  // AI should prioritize this highly\n            description_extended: 'Genera energía adicional para alimentar tus flotas. Esencial para operaciones militares a gran escala.'\n        },\n        \n        mining_complex: {\n            id: 'mining_complex',\n            name: 'Complejo Minero',\n            icon: '⛏️',\n            description: '+100% producción de metal del planeta',\n            cost: {\n                metal: 80,  // Higher cost (metal for construction only)\n                energy: 0\n            },\n            buildTime: 70000, // 70 seconds\n            maxLevel: 1,\n            effects: {\n                metalGeneration: 2.0 // Double metal generation\n            },\n            visual: {\n                color: '#e67e22',\n                size: 'large'\n            }\n        }\n    },\n\n    // Get building definition by ID\n    getDefinition(buildingId) {\n        return this.types[buildingId] || null;\n    },\n\n    // Get all available building types\n    getAllTypes() {\n        return Object.keys(this.types).filter(id => {\n            const building = this.types[id];\n            return building.unlocked !== false;\n        });\n    },\n\n    // ENERGY FUEL: Enhanced affordability check\n    canAfford(buildingId, playerResources) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return false;\n        \n        return playerResources.metal >= building.cost.metal && \n               playerResources.energy >= building.cost.energy;\n    },\n\n    // ENERGY FUEL: AI affordability check\n    canAIAfford(buildingId, aiMetal, aiEnergy) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return false;\n        \n        return aiMetal >= building.cost.metal && \n               aiEnergy >= building.cost.energy;\n    },\n\n    // Get building cost as formatted string\n    getCostString(buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return '';\n        \n        let costString = `${building.cost.metal} Metal`;\n        if (building.cost.energy > 0) {\n            costString += ` + ${building.cost.energy} Energy`;\n        }\n        return costString;\n    },\n\n    // Get building time as formatted string\n    getBuildTimeString(buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return '';\n        \n        const seconds = Math.ceil(building.buildTime / 1000);\n        return `${seconds}s`;\n    },\n\n    // Check if building can be built on planet (space limits)\n    canBuildOnPlanet(buildingId, planet) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return false;\n        \n        // Check if building already exists\n        if (planet.buildings && planet.buildings[buildingId] && planet.buildings[buildingId].level > 0) {\n            return false; // Already built (max level 1 for now)\n        }\n        \n        // Check building slots\n        const currentBuildings = this.getBuiltCount(planet);\n        const maxBuildings = CONFIG.BUILDINGS?.MAX_PER_PLANET || 3;\n        \n        return currentBuildings < maxBuildings;\n    },\n\n    // Get count of built buildings on planet\n    getBuiltCount(planet) {\n        if (!planet.buildings) return 0;\n        \n        return Object.values(planet.buildings).reduce((count, building) => {\n            return count + (building.level > 0 ? 1 : 0);\n        }, 0);\n    },\n\n    // ENERGY FUEL: Apply building effects to planet\n    applyEffects(planet, buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building || !building.effects) return;\n        \n        console.log(`⚡ Applying ${building.name} effects to planet ${planet.id}`);\n        \n        // Apply each effect\n        Object.keys(building.effects).forEach(effectType => {\n            const effectValue = building.effects[effectType];\n            \n            switch (effectType) {\n                case 'shipProductionRate':\n                    planet.shipProductionMultiplier = (planet.shipProductionMultiplier || 1.0) * effectValue;\n                    break;\n                case 'metalGeneration':\n                    planet.metalGenerationMultiplier = (planet.metalGenerationMultiplier || 1.0) * effectValue;\n                    break;\n                case 'energyGeneration':\n                    // ENERGY FUEL: This is now critical for movement\n                    planet.energyGenerationBonus = (planet.energyGenerationBonus || 0) + effectValue;\n                    console.log(`🔬 Planet ${planet.id} now generates +${effectValue} energy/min from Research Lab`);\n                    break;\n                case 'researchPoints':\n                    planet.researchPointsGeneration = (planet.researchPointsGeneration || 0) + effectValue;\n                    break;\n            }\n        });\n        \n        // Recalculate planet production\n        if (typeof planet.updateProduction === 'function') {\n            planet.updateProduction();\n        }\n    },\n\n    // Remove building effects from planet\n    removeEffects(planet, buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building || !building.effects) return;\n        \n        console.log(`⚡ Removing ${building.name} effects from planet ${planet.id}`);\n        \n        // Remove each effect (reverse of apply)\n        Object.keys(building.effects).forEach(effectType => {\n            const effectValue = building.effects[effectType];\n            \n            switch (effectType) {\n                case 'shipProductionRate':\n                    planet.shipProductionMultiplier = (planet.shipProductionMultiplier || 1.0) / effectValue;\n                    break;\n                case 'metalGeneration':\n                    planet.metalGenerationMultiplier = (planet.metalGenerationMultiplier || 1.0) / effectValue;\n                    break;\n                case 'energyGeneration':\n                    planet.energyGenerationBonus = Math.max(0, (planet.energyGenerationBonus || 0) - effectValue);\n                    break;\n                case 'researchPoints':\n                    planet.researchPointsGeneration = Math.max(0, (planet.researchPointsGeneration || 0) - effectValue);\n                    break;\n            }\n        });\n        \n        // Recalculate planet production\n        if (typeof planet.updateProduction === 'function') {\n            planet.updateProduction();\n        }\n    },\n\n    // ENERGY FUEL: Get building priority for AI\n    getAIPriority(buildingId, gameState) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return 0;\n        \n        let priority = building.aiPriority || 50;\n        \n        // ENERGY FUEL: Research Lab is CRITICAL for AI\n        if (buildingId === 'research_lab') {\n            // Higher priority if AI has low energy\n            if (gameState && gameState.aiEnergy < 30) {\n                priority = 95;\n            }\n            return priority;\n        }\n        \n        // Mining complex priority based on metal needs\n        if (buildingId === 'mining_complex') {\n            if (gameState && gameState.aiMetal < 40) {\n                priority = 70;\n            }\n            return priority;\n        }\n        \n        return priority;\n    },\n\n    // ENERGY FUEL: Get recommended building for AI\n    getAIRecommendedBuilding(planet, gameState) {\n        const availableBuildings = this.getAllTypes().filter(id => {\n            return this.canBuildOnPlanet(id, planet);\n        });\n        \n        if (availableBuildings.length === 0) return null;\n        \n        // Score each building\n        const scoredBuildings = availableBuildings.map(id => {\n            const building = this.getDefinition(id);\n            const priority = this.getAIPriority(id, gameState);\n            \n            // Can AI afford it?\n            const canAfford = this.canAIAfford(id, gameState.aiMetal || 0, gameState.aiEnergy || 0);\n            \n            return {\n                id,\n                building,\n                priority,\n                canAfford,\n                score: canAfford ? priority : priority * 0.1 // Heavy penalty if can't afford\n            };\n        });\n        \n        // Sort by score\n        scoredBuildings.sort((a, b) => b.score - a.score);\n        \n        return scoredBuildings[0]?.canAfford ? scoredBuildings[0].id : null;\n    },\n\n    // Get visual representation for building\n    getVisualConfig(buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return null;\n        \n        return {\n            icon: building.icon,\n            color: building.visual.color,\n            size: building.visual.size\n        };\n    },\n\n    // ENERGY FUEL: Get building effectiveness info\n    getBuildingInfo(buildingId) {\n        const building = this.getDefinition(buildingId);\n        if (!building) return null;\n        \n        let info = {\n            name: building.name,\n            description: building.description,\n            cost: building.cost,\n            buildTime: building.buildTime,\n            effects: building.effects\n        };\n        \n        // Add special info for energy fuel system\n        if (buildingId === 'research_lab') {\n            info.specialNote = 'CRÍTICO: Genera energía para movimiento de flotas';\n            info.energyValue = '+6 energy/min = ~40 ships extra de rango medio';\n        }\n        \n        return info;\n    },\n\n    // Debug: List all buildings\n    debugBuildings() {\n        console.table(\n            Object.keys(this.types).map(id => {\n                const building = this.types[id];\n                return {\n                    ID: id,\n                    Name: building.name,\n                    'Metal Cost': building.cost.metal,\n                    'Energy Cost': building.cost.energy,\n                    'Build Time': this.getBuildTimeString(id),\n                    Effects: Object.keys(building.effects).join(', '),\n                    Priority: building.priority || 'normal'\n                };\n            })\n        );\n    }\n};\n\n// Make available globally\nwindow.Buildings = Buildings;"
+// Building Definitions - ENERGY AS FUEL SYSTEM V2.0
+const Buildings = {
+    
+    // Building type definitions - REBALANCED FOR ENERGY FUEL
+    types: {
+        shipyard: {
+            id: 'shipyard',
+            name: 'Astillero',
+            icon: '🏭',
+            description: '+50% velocidad de producción de naves',
+            cost: {
+                metal: 60,  // Reduced cost (metal is scarcer)
+                energy: 0
+            },
+            buildTime: 60000, // 60 seconds
+            maxLevel: 1,
+            effects: {
+                shipProductionRate: 1.5 // 50% faster ship production
+            },
+            visual: {
+                color: '#4a90e2',
+                size: 'medium'
+            }
+        },
+        
+        research_lab: {
+            id: 'research_lab',
+            name: 'Laboratorio de Energía',
+            icon: '🔬',
+            description: '+6 energía/min + puntos de investigación',
+            cost: {
+                metal: 40,  // Cheaper - very important building
+                energy: 15  // Small energy investment
+            },
+            buildTime: 50000, // Faster build - 50 seconds
+            maxLevel: 1,
+            effects: {
+                energyGeneration: 6.0,     // +6 energy per minute (CRITICAL)
+                researchPoints: 1.0        // For future tech tree
+            },
+            visual: {
+                color: '#9b59b6',
+                size: 'medium'
+            },
+            // ENERGY FUEL: Special properties
+            priority: 'critical',
+            aiPriority: 90,  // AI should prioritize this highly
+            description_extended: 'Genera energía adicional para alimentar tus flotas. Esencial para operaciones militares a gran escala.'
+        },
+        
+        mining_complex: {
+            id: 'mining_complex',
+            name: 'Complejo Minero',
+            icon: '⛏️',
+            description: '+100% producción de metal del planeta',
+            cost: {
+                metal: 80,  // Higher cost (metal for construction only)
+                energy: 0
+            },
+            buildTime: 70000, // 70 seconds
+            maxLevel: 1,
+            effects: {
+                metalGeneration: 2.0 // Double metal generation
+            },
+            visual: {
+                color: '#e67e22',
+                size: 'large'
+            }
+        }
+    },
+
+    // Get building definition by ID
+    getDefinition(buildingId) {
+        return this.types[buildingId] || null;
+    },
+
+    // Get all available building types
+    getAllTypes() {
+        return Object.keys(this.types).filter(id => {
+            const building = this.types[id];
+            return building.unlocked !== false;
+        });
+    },
+
+    // ENERGY FUEL: Enhanced affordability check
+    canAfford(buildingId, playerResources) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return false;
+        
+        return playerResources.metal >= building.cost.metal && 
+               playerResources.energy >= building.cost.energy;
+    },
+
+    // ENERGY FUEL: AI affordability check
+    canAIAfford(buildingId, aiMetal, aiEnergy) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return false;
+        
+        return aiMetal >= building.cost.metal && 
+               aiEnergy >= building.cost.energy;
+    },
+
+    // Get building cost as formatted string
+    getCostString(buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return '';
+        
+        let costString = `${building.cost.metal} Metal`;
+        if (building.cost.energy > 0) {
+            costString += ` + ${building.cost.energy} Energy`;
+        }
+        return costString;
+    },
+
+    // Get building time as formatted string
+    getBuildTimeString(buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return '';
+        
+        const seconds = Math.ceil(building.buildTime / 1000);
+        return `${seconds}s`;
+    },
+
+    // Check if building can be built on planet (space limits)
+    canBuildOnPlanet(buildingId, planet) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return false;
+        
+        // Check if building already exists
+        if (planet.buildings && planet.buildings[buildingId] && planet.buildings[buildingId].level > 0) {
+            return false; // Already built (max level 1 for now)
+        }
+        
+        // Check building slots
+        const currentBuildings = this.getBuiltCount(planet);
+        const maxBuildings = CONFIG.BUILDINGS?.MAX_PER_PLANET || 3;
+        
+        return currentBuildings < maxBuildings;
+    },
+
+    // Get count of built buildings on planet
+    getBuiltCount(planet) {
+        if (!planet.buildings) return 0;
+        
+        return Object.values(planet.buildings).reduce((count, building) => {
+            return count + (building.level > 0 ? 1 : 0);
+        }, 0);
+    },
+
+    // ENERGY FUEL: Apply building effects to planet
+    applyEffects(planet, buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building || !building.effects) return;
+        
+        console.log(`⚡ Applying ${building.name} effects to planet ${planet.id}`);
+        
+        // Apply each effect
+        Object.keys(building.effects).forEach(effectType => {
+            const effectValue = building.effects[effectType];
+            
+            switch (effectType) {
+                case 'shipProductionRate':
+                    planet.shipProductionMultiplier = (planet.shipProductionMultiplier || 1.0) * effectValue;
+                    break;
+                case 'metalGeneration':
+                    planet.metalGenerationMultiplier = (planet.metalGenerationMultiplier || 1.0) * effectValue;
+                    break;
+                case 'energyGeneration':
+                    // ENERGY FUEL: This is now critical for movement
+                    planet.energyGenerationBonus = (planet.energyGenerationBonus || 0) + effectValue;
+                    console.log(`🔬 Planet ${planet.id} now generates +${effectValue} energy/min from Research Lab`);
+                    break;
+                case 'researchPoints':
+                    planet.researchPointsGeneration = (planet.researchPointsGeneration || 0) + effectValue;
+                    break;
+            }
+        });
+        
+        // Recalculate planet production
+        if (typeof planet.updateProduction === 'function') {
+            planet.updateProduction();
+        }
+    },
+
+    // Remove building effects from planet
+    removeEffects(planet, buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building || !building.effects) return;
+        
+        console.log(`⚡ Removing ${building.name} effects from planet ${planet.id}`);
+        
+        // Remove each effect (reverse of apply)
+        Object.keys(building.effects).forEach(effectType => {
+            const effectValue = building.effects[effectType];
+            
+            switch (effectType) {
+                case 'shipProductionRate':
+                    planet.shipProductionMultiplier = (planet.shipProductionMultiplier || 1.0) / effectValue;
+                    break;
+                case 'metalGeneration':
+                    planet.metalGenerationMultiplier = (planet.metalGenerationMultiplier || 1.0) / effectValue;
+                    break;
+                case 'energyGeneration':
+                    planet.energyGenerationBonus = Math.max(0, (planet.energyGenerationBonus || 0) - effectValue);
+                    break;
+                case 'researchPoints':
+                    planet.researchPointsGeneration = Math.max(0, (planet.researchPointsGeneration || 0) - effectValue);
+                    break;
+            }
+        });
+        
+        // Recalculate planet production
+        if (typeof planet.updateProduction === 'function') {
+            planet.updateProduction();
+        }
+    },
+
+    // ENERGY FUEL: Get building priority for AI
+    getAIPriority(buildingId, gameState) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return 0;
+        
+        let priority = building.aiPriority || 50;
+        
+        // ENERGY FUEL: Research Lab is CRITICAL for AI
+        if (buildingId === 'research_lab') {
+            // Higher priority if AI has low energy
+            if (gameState && gameState.aiEnergy < 30) {
+                priority = 95;
+            }
+            return priority;
+        }
+        
+        // Mining complex priority based on metal needs
+        if (buildingId === 'mining_complex') {
+            if (gameState && gameState.aiMetal < 40) {
+                priority = 70;
+            }
+            return priority;
+        }
+        
+        return priority;
+    },
+
+    // ENERGY FUEL: Get recommended building for AI
+    getAIRecommendedBuilding(planet, gameState) {
+        const availableBuildings = this.getAllTypes().filter(id => {
+            return this.canBuildOnPlanet(id, planet);
+        });
+        
+        if (availableBuildings.length === 0) return null;
+        
+        // Score each building
+        const scoredBuildings = availableBuildings.map(id => {
+            const building = this.getDefinition(id);
+            const priority = this.getAIPriority(id, gameState);
+            
+            // Can AI afford it?
+            const canAfford = this.canAIAfford(id, gameState.aiMetal || 0, gameState.aiEnergy || 0);
+            
+            return {
+                id,
+                building,
+                priority,
+                canAfford,
+                score: canAfford ? priority : priority * 0.1 // Heavy penalty if can't afford
+            };
+        });
+        
+        // Sort by score
+        scoredBuildings.sort((a, b) => b.score - a.score);
+        
+        return scoredBuildings[0]?.canAfford ? scoredBuildings[0].id : null;
+    },
+
+    // Get visual representation for building
+    getVisualConfig(buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return null;
+        
+        return {
+            icon: building.icon,
+            color: building.visual.color,
+            size: building.visual.size
+        };
+    },
+
+    // ENERGY FUEL: Get building effectiveness info
+    getBuildingInfo(buildingId) {
+        const building = this.getDefinition(buildingId);
+        if (!building) return null;
+        
+        let info = {
+            name: building.name,
+            description: building.description,
+            cost: building.cost,
+            buildTime: building.buildTime,
+            effects: building.effects
+        };
+        
+        // Add special info for energy fuel system
+        if (buildingId === 'research_lab') {
+            info.specialNote = 'CRÍTICO: Genera energía para movimiento de flotas';
+            info.energyValue = '+6 energy/min = ~40 ships extra de rango medio';
+        }
+        
+        return info;
+    },
+
+    // Debug: List all buildings
+    debugBuildings() {
+        console.table(
+            Object.keys(this.types).map(id => {
+                const building = this.types[id];
+                return {
+                    ID: id,
+                    Name: building.name,
+                    'Metal Cost': building.cost.metal,
+                    'Energy Cost': building.cost.energy,
+                    'Build Time': this.getBuildTimeString(id),
+                    Effects: Object.keys(building.effects).join(', '),
+                    Priority: building.priority || 'normal'
+                };
+            })
+        );
+    }
+};
+
+// Make available globally
+window.Buildings = Buildings;
