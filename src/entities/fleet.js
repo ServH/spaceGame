@@ -1,4 +1,4 @@
-// Fleet class - FIXED animation loop
+// Fleet system - Based on working branch
 class Fleet {
     constructor(origin, destination, ships, owner) {
         this.id = Date.now() + Math.random();
@@ -13,10 +13,8 @@ class Fleet {
         this.targetY = destination.y;
         
         this.distance = Utils.distance(origin, destination);
-        this.speed = CONFIG.FLEETS?.SPEED || 60;
-        this.travelTime = this.distance / this.speed * 1000;
+        this.travelTime = this.distance / CONFIG.FLEET.SPEED * 1000;
         this.startTime = Date.now();
-        this.hasArrived = false;
         
         this.element = null;
         this.textElement = null;
@@ -35,7 +33,17 @@ class Fleet {
         this.element.setAttribute('class', 'fleet');
         this.element.style.pointerEvents = 'none';
         
-        let fill = this.owner === 'player' ? '#00ff88' : '#ff4444';
+        let fill;
+        switch (this.owner) {
+            case 'player':
+                fill = CONFIG.COLORS.PLAYER;
+                break;
+            case 'ai':
+                fill = CONFIG.COLORS.AI;
+                break;
+            default:
+                fill = CONFIG.COLORS.NEUTRAL;
+        }
         this.element.setAttribute('fill', fill);
         svg.appendChild(this.element);
         
@@ -49,63 +57,60 @@ class Fleet {
         svg.appendChild(this.textElement);
     }
 
-    // FIXED: Return boolean for filtering
     update() {
-        if (this.hasArrived) return false;
-        
         const now = Date.now();
         const elapsed = now - this.startTime;
         const progress = Math.min(elapsed / this.travelTime, 1);
         
-        // FIXED: Use Utils.lerp for smooth movement
         this.x = Utils.lerp(this.origin.x, this.targetX, progress);
         this.y = Utils.lerp(this.origin.y, this.targetY, progress);
         
-        // Update visual position
-        if (this.element) {
-            this.element.setAttribute('cx', this.x);
-            this.element.setAttribute('cy', this.y);
-            this.textElement.setAttribute('x', this.x + 5);
-            this.textElement.setAttribute('y', this.y - 5);
-        }
+        this.element.setAttribute('cx', this.x);
+        this.element.setAttribute('cy', this.y);
+        this.textElement.setAttribute('x', this.x + 5);
+        this.textElement.setAttribute('y', this.y - 5);
         
         if (progress >= 1) {
             this.arrive();
-            return false; // Remove from array
+            return false;
         }
         
-        return true; // Keep in array
+        return true;
     }
 
     arrive() {
-        this.hasArrived = true;
-        this.destination.attack(this.ships, this.owner);
-        this.cleanup();
+        if (this.destination.owner === 'neutral') {
+            this.destination.startConquest(this.owner, this.ships);
+        } else {
+            this.destination.attack(this.ships, this.owner);
+        }
+        
+        this.destroy();
     }
 
-    cleanup() {
+    destroy() {
         if (this.element) this.element.remove();
         if (this.textElement) this.textElement.remove();
     }
 }
 
-// FleetManager - Energy costs
+// FleetManager - Based on working branch logic
 const FleetManager = {
+    fleets: [],
+
     createFleet(origin, destination, ships, owner) {
         if (!origin.canSendShips(ships)) {
             console.log(`🚫 Cannot send fleet: insufficient ships on planet ${origin.id}`);
             return null;
         }
 
-        const distance = Utils.distance(origin, destination);
-        const energyCost = CONFIG.calculateMovementCost(ships, distance);
-        
-        if (owner === 'ai') {
-            if (!ResourceManager.payForAIMovement(ships, distance)) {
-                return null;
-            }
-        } else if (owner === 'player') {
+        // Energy cost calculation for player
+        if (owner === 'player') {
+            const distance = Utils.distance(origin, destination);
+            const energyCost = CONFIG.calculateMovementCost(ships, distance);
+            
             if (!ResourceManager.canAffordMovement(ships, distance)) {
+                console.log(`🚫 Player cannot afford movement: ${energyCost} energy needed`);
                 return null;
             }
             ResourceManager.spendEnergy(energyCost);
@@ -113,10 +118,19 @@ const FleetManager = {
 
         if (origin.sendShips(ships)) {
             const fleet = new Fleet(origin, destination, ships, owner);
-            GameEngine.addFleet(fleet);
+            this.fleets.push(fleet);
             return fleet;
         }
         
         return null;
+    },
+
+    update() {
+        this.fleets = this.fleets.filter(fleet => fleet.update());
+    },
+
+    clear() {
+        this.fleets.forEach(fleet => fleet.destroy());
+        this.fleets = [];
     }
 };
