@@ -7,7 +7,11 @@ class Planet {
         this.capacity = capacity;
         this.ships = 0;
         this.owner = 'neutral';
-        this.radius = Utils.lerp(CONFIG.VISUAL.PLANET_MIN_RADIUS, CONFIG.VISUAL.PLANET_MAX_RADIUS, capacity / 70);
+        
+        // Fix: Use correct CONFIG structure for radius calculation
+        const minRadius = CONFIG.PLANETS?.RADIUS_MIN || 20;
+        const maxRadius = CONFIG.PLANETS?.RADIUS_MAX || 35;
+        this.radius = Utils.lerp(minRadius, maxRadius, capacity / 70);
         
         // Conquest system
         this.conquestTimer = 0;
@@ -26,7 +30,7 @@ class Planet {
         this.researchPointsGeneration = 0;
         
         // AI Resource tracking
-        this.aiMetal = CONFIG.PLANETS?.INITIAL_RESOURCES?.metal?.max || 120;
+        this.aiMetal = CONFIG.PLANETS?.BASE_AI_METAL || 120;
         this.lastAIMetalUpdate = Date.now();
         
         // Visual
@@ -261,7 +265,7 @@ class Planet {
         return info;
     }
 
-    // Additional methods (simplified for brevity)
+    // Additional methods
     updateAIMetal() {
         const now = Date.now();
         if (now - this.lastAIMetalUpdate > 6000) {
@@ -315,6 +319,25 @@ class Planet {
         this.assignedKey = key;
         this.keyElement.textContent = key.toUpperCase();
         CONFIG.KEYBOARD.assignments[key] = this.id;
+    }
+
+    // Conquest methods
+    startConquest(conqueror, fleetSize) {
+        this.isBeingConquered = true;
+        this.conqueror = conqueror;
+        this.conquestTimer = CONFIG.PLANETS?.CONQUEST_TIME || 1000;
+        this.updateVisual();
+    }
+
+    completeConquest() {
+        if (this.conqueror) {
+            this.setOwner(this.conqueror);
+            this.ships = 1; // Minimal garrison
+        }
+        this.isBeingConquered = false;
+        this.conqueror = null;
+        this.conquestTimer = 0;
+        this.updateVisual();
     }
 
     cleanup() {
