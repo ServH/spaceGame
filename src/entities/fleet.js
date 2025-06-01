@@ -1,4 +1,4 @@
-// Fleet class - FIXED for refactored architecture
+// Fleet class - FIXED animation loop
 class Fleet {
     constructor(origin, destination, ships, owner) {
         this.id = Date.now() + Math.random();
@@ -35,17 +35,7 @@ class Fleet {
         this.element.setAttribute('class', 'fleet');
         this.element.style.pointerEvents = 'none';
         
-        let fill;
-        switch (this.owner) {
-            case 'player':
-                fill = '#00ff88';
-                break;
-            case 'ai':
-                fill = '#ff4444';
-                break;
-            default:
-                fill = '#888888';
-        }
+        let fill = this.owner === 'player' ? '#00ff88' : '#ff4444';
         this.element.setAttribute('fill', fill);
         svg.appendChild(this.element);
         
@@ -59,6 +49,7 @@ class Fleet {
         svg.appendChild(this.textElement);
     }
 
+    // FIXED: Return boolean for filtering
     update() {
         if (this.hasArrived) return false;
         
@@ -66,20 +57,24 @@ class Fleet {
         const elapsed = now - this.startTime;
         const progress = Math.min(elapsed / this.travelTime, 1);
         
+        // FIXED: Use Utils.lerp for smooth movement
         this.x = Utils.lerp(this.origin.x, this.targetX, progress);
         this.y = Utils.lerp(this.origin.y, this.targetY, progress);
         
-        this.element.setAttribute('cx', this.x);
-        this.element.setAttribute('cy', this.y);
-        this.textElement.setAttribute('x', this.x + 5);
-        this.textElement.setAttribute('y', this.y - 5);
+        // Update visual position
+        if (this.element) {
+            this.element.setAttribute('cx', this.x);
+            this.element.setAttribute('cy', this.y);
+            this.textElement.setAttribute('x', this.x + 5);
+            this.textElement.setAttribute('y', this.y - 5);
+        }
         
         if (progress >= 1) {
             this.arrive();
-            return false;
+            return false; // Remove from array
         }
         
-        return true;
+        return true; // Keep in array
     }
 
     arrive() {
@@ -94,7 +89,7 @@ class Fleet {
     }
 }
 
-// FleetManager - Compatible with energy costs
+// FleetManager - Energy costs
 const FleetManager = {
     createFleet(origin, destination, ships, owner) {
         if (!origin.canSendShips(ships)) {
@@ -102,26 +97,20 @@ const FleetManager = {
             return null;
         }
 
-        // Check energy cost for movement
         const distance = Utils.distance(origin, destination);
         const energyCost = CONFIG.calculateMovementCost(ships, distance);
         
-        // For AI, use AI energy payment system
         if (owner === 'ai') {
             if (!ResourceManager.payForAIMovement(ships, distance)) {
-                console.log(`🚫 AI cannot afford movement: ${energyCost} energy needed`);
                 return null;
             }
         } else if (owner === 'player') {
-            // For player, check energy availability
             if (!ResourceManager.canAffordMovement(ships, distance)) {
-                console.log(`🚫 Player cannot afford movement: ${energyCost} energy needed`);
                 return null;
             }
             ResourceManager.spendEnergy(energyCost);
         }
 
-        // Send ships and create fleet
         if (origin.sendShips(ships)) {
             const fleet = new Fleet(origin, destination, ships, owner);
             GameEngine.addFleet(fleet);
@@ -129,27 +118,5 @@ const FleetManager = {
         }
         
         return null;
-    },
-
-    canCreateFleet(origin, destination, ships, owner) {
-        if (!origin.canSendShips(ships)) {
-            return { 
-                canCreate: false, 
-                reason: 'insufficient_ships',
-                have: origin.ships,
-                need: ships
-            };
-        }
-        
-        const distance = Utils.distance(origin, destination);
-        if (owner === 'player' && !ResourceManager.canAffordMovement(ships, distance)) {
-            return {
-                canCreate: false,
-                reason: 'insufficient_energy',
-                cost: CONFIG.calculateMovementCost(ships, distance)
-            };
-        }
-        
-        return { canCreate: true };
     }
 };
