@@ -1,4 +1,4 @@
-// Planet class - FIXED for refactored architecture  
+// Planet class - Complete with conquest system
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -8,8 +8,8 @@ class Planet {
         this.ships = 0;
         this.owner = 'neutral';
         
-        const minRadius = CONFIG.PLANETS?.RADIUS_MIN || 20;
-        const maxRadius = CONFIG.PLANETS?.RADIUS_MAX || 35;
+        const minRadius = CONFIG.PLANETS?.RADIUS_MIN || 15;
+        const maxRadius = CONFIG.PLANETS?.RADIUS_MAX || 40;
         this.radius = Utils.lerp(minRadius, maxRadius, capacity / 70);
         
         // Conquest system
@@ -17,21 +17,17 @@ class Planet {
         this.isBeingConquered = false;
         this.conqueror = null;
         
-        // Ship production
         this.lastProduction = Date.now();
         this.shipProductionRate = CONFIG.PLANETS?.SHIP_PRODUCTION_RATE || 0.8;
         
-        // Building system
         this.buildings = {};
         this.shipProductionMultiplier = 1.0;
         this.metalGenerationMultiplier = 1.0;
         this.energyGenerationBonus = 0;
         
-        // AI resources
         this.aiMetal = CONFIG.PLANETS?.BASE_AI_METAL || 120;
         this.lastAIMetalUpdate = Date.now();
         
-        // Visual elements
         this.element = null;
         this.textElement = null;
         this.keyElement = null;
@@ -213,7 +209,6 @@ class Planet {
         return this.capacity * 6;
     }
 
-    // FIXED tooltip method - compatible with new architecture
     getTooltipInfo() {
         const ownerName = this.owner === 'player' ? 'Jugador' : 
                          this.owner === 'ai' ? 'IA' : 'Neutral';
@@ -233,9 +228,8 @@ class Planet {
             }
         }
 
-        // FIXED: Use direct calculation instead of missing ResourceManager methods
         if (this.owner === 'player') {
-            const baseMetalGeneration = 1.0; // Base from CONFIG.RESOURCES.BASE_GENERATION.metal
+            const baseMetalGeneration = 1.0;
             const metalGeneration = baseMetalGeneration * this.metalGenerationMultiplier;
             info += `<br>Metal: +${metalGeneration.toFixed(1)}/min`;
             if (this.metalGenerationMultiplier > 1) {
@@ -278,6 +272,32 @@ class Planet {
         }
         
         return info;
+    }
+
+    // MISSING METHOD - conquest system
+    startConquest(newOwner, ships) {
+        if (this.owner === 'neutral') {
+            this.isBeingConquered = true;
+            this.conqueror = newOwner;
+            this.ships = ships;
+            this.conquestTimer = CONFIG.PLANETS?.CONQUEST_TIME || 2000;
+            this.updateVisual();
+        }
+    }
+
+    completeConquest() {
+        this.owner = this.conqueror;
+        this.isBeingConquered = false;
+        this.conqueror = null;
+        this.conquestTimer = 0;
+        this.lastProduction = Date.now();
+        
+        if (this.owner === 'ai') {
+            this.aiMetal = 120;
+            this.lastAIMetalUpdate = Date.now();
+        }
+        
+        this.updateVisual();
     }
 
     attack(attackerShips, attacker) {
@@ -330,24 +350,6 @@ class Planet {
             return true;
         }
         return false;
-    }
-
-    startConquest(conqueror, fleetSize) {
-        this.isBeingConquered = true;
-        this.conqueror = conqueror;
-        this.conquestTimer = 1000;
-        this.updateVisual();
-    }
-
-    completeConquest() {
-        if (this.conqueror) {
-            this.setOwner(this.conqueror);
-            this.ships = 1;
-        }
-        this.isBeingConquered = false;
-        this.conqueror = null;
-        this.conquestTimer = 0;
-        this.updateVisual();
     }
 
     cleanup() {
