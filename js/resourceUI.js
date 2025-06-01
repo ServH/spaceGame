@@ -10,7 +10,7 @@ const ResourceUI = {
     init() {
         this.createResourceDisplay();
         this.addStyles();
-        console.log('🎨 Resource UI initialized');
+        console.log('💰 ResourceUI initialized');
     },
 
     // Create main resource display
@@ -24,7 +24,7 @@ const ResourceUI = {
         const compactDisplay = document.createElement('div');
         compactDisplay.id = 'resourceCompact';
         compactDisplay.className = 'resource-compact';
-        compactDisplay.textContent = '🔩 0';
+        compactDisplay.textContent = '🔩 0 | ⚡ 0';
         compactDisplay.title = 'Click to expand resource details';
         
         // Expanded display
@@ -45,7 +45,21 @@ const ResourceUI = {
             </div>
         `;
         
+        // Energy details
+        const energyDetails = document.createElement('div');
+        energyDetails.className = 'resource-detail';
+        energyDetails.innerHTML = `
+            <div class="resource-icon">⚡</div>
+            <div class="resource-info">
+                <div id="energyDisplay" class="resource-amount">Energy: 0/0 (+0/min)</div>
+                <div class="resource-bar">
+                    <div id="energyBar" class="resource-progress energy" style="width: 0%"></div>
+                </div>
+            </div>
+        `;
+        
         expandedDisplay.appendChild(metalDetails);
+        expandedDisplay.appendChild(energyDetails);
         
         // Toggle functionality
         compactDisplay.addEventListener('click', () => this.toggleDisplay());
@@ -68,7 +82,9 @@ const ResourceUI = {
             compact: compactDisplay,
             expanded: expandedDisplay,
             metalDisplay: document.getElementById('metalDisplay'),
-            metalBar: document.getElementById('metalBar')
+            metalBar: document.getElementById('metalBar'),
+            energyDisplay: document.getElementById('energyDisplay'),
+            energyBar: document.getElementById('energyBar')
         };
     },
 
@@ -96,7 +112,7 @@ const ResourceUI = {
                 cursor: pointer;
                 transition: all 0.3s ease;
                 display: inline-block;
-                min-width: 80px;
+                min-width: 120px;
                 text-align: center;
             }
 
@@ -115,7 +131,7 @@ const ResourceUI = {
                 border: 2px solid #0088cc;
                 border-radius: 12px;
                 padding: 16px;
-                min-width: 280px;
+                min-width: 320px;
                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
                 z-index: 101;
             }
@@ -166,6 +182,10 @@ const ResourceUI = {
                 border-radius: 3px;
                 transition: width 0.5s ease;
                 position: relative;
+            }
+
+            .resource-progress.energy {
+                background: linear-gradient(90deg, #ffaa00, #ffcc44);
             }
 
             .resource-progress::after {
@@ -265,24 +285,37 @@ const ResourceUI = {
         if (!ResourceManager) return;
 
         const metal = ResourceManager.getMetal();
-        const capacity = ResourceManager.getTotalMetalStorageCapacity();
-        const generation = ResourceManager.getTotalMetalGeneration();
+        const energy = ResourceManager.getEnergy();
+        const metalCapacity = ResourceManager.getTotalMetalStorageCapacity();
+        const energyCapacity = ResourceManager.getTotalEnergyStorageCapacity();
+        const metalGeneration = ResourceManager.getTotalMetalGeneration();
+        const energyGeneration = ResourceManager.getTotalEnergyGeneration();
         
         // Update compact display
         if (this.elements.compact) {
-            this.elements.compact.textContent = `🔩 ${metal}`;
+            this.elements.compact.textContent = `🔩 ${metal} | ⚡ ${energy}`;
         }
         
-        // Update expanded display
+        // Update expanded display - Metal
         if (this.elements.metalDisplay) {
             this.elements.metalDisplay.textContent = 
-                `Metal: ${metal}/${capacity} (+${generation.toFixed(1)}/min)`;
+                `Metal: ${metal}/${metalCapacity} (+${metalGeneration.toFixed(1)}/min)`;
         }
         
-        // Update progress bar
         if (this.elements.metalBar) {
-            const percentage = capacity > 0 ? (metal / capacity) * 100 : 0;
+            const percentage = metalCapacity > 0 ? (metal / metalCapacity) * 100 : 0;
             this.elements.metalBar.style.width = `${Math.min(percentage, 100)}%`;
+        }
+
+        // Update expanded display - Energy
+        if (this.elements.energyDisplay) {
+            this.elements.energyDisplay.textContent = 
+                `Energy: ${energy}/${energyCapacity} (+${energyGeneration.toFixed(1)}/min)`;
+        }
+        
+        if (this.elements.energyBar) {
+            const percentage = energyCapacity > 0 ? (energy / energyCapacity) * 100 : 0;
+            this.elements.energyBar.style.width = `${Math.min(percentage, 100)}%`;
         }
     },
 
@@ -314,7 +347,8 @@ const ResourceUI = {
         if (!resourceInfo) return '';
 
         const metal = resourceInfo.metal;
-        return `Metal: ${metal.current}/${metal.max} (+${metal.generation}/min)`;
+        const energy = resourceInfo.energy;
+        return `Metal: +${metal.generation}/min | Energy: +${energy.generation}/min`;
     },
 
     // Clean up
