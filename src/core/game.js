@@ -149,18 +149,37 @@ const Game = {
     restart() {
         console.log('🔄 Restarting game...');
         
-        // Clean up systems
-        const systems = [GameEngine, FleetManager, BuildingManager, ResourceManager, InputManager];
+        // Clean up systems with new cleanup methods
+        const systems = [
+            { name: 'GameEngine', obj: GameEngine },
+            { name: 'FleetManager', obj: FleetManager },
+            { name: 'BuildingManager', obj: BuildingManager },
+            { name: 'ResourceManager', obj: ResourceManager },
+            { name: 'InputManager', obj: InputManager },
+            { name: 'UI', obj: UI },
+            { name: 'ResourceUI', obj: ResourceUI },
+            { name: 'Animations', obj: Animations },
+            { name: 'UIFeedback', obj: UIFeedback }
+        ];
+        
         systems.forEach(system => {
-            if (typeof system !== 'undefined' && system.cleanup) {
-                system.cleanup();
-            } else if (typeof system !== 'undefined' && system.reset) {
-                system.reset();
+            if (typeof system.obj !== 'undefined') {
+                // Try cleanup first (new method)
+                if (system.obj.cleanup) {
+                    console.log(`🧹 Cleaning up ${system.name}...`);
+                    system.obj.cleanup();
+                }
+                // Fallback to reset if cleanup doesn't exist
+                else if (system.obj.reset) {
+                    console.log(`🔄 Resetting ${system.name}...`);
+                    system.obj.reset();
+                }
             }
         });
         
-        // Clean up performance manager
+        // Clean up performance manager last
         if (typeof PerformanceManager !== 'undefined' && PerformanceManager.cleanup) {
+            console.log('🧹 Cleaning up Performance Manager...');
             PerformanceManager.cleanup();
         }
         

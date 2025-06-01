@@ -323,9 +323,19 @@ const ResourceUI = {
     showGenerationPulse() {
         if (this.elements.compact) {
             this.elements.compact.classList.add('resource-generation-pulse');
-            setTimeout(() => {
-                this.elements.compact.classList.remove('resource-generation-pulse');
-            }, 600);
+            
+            // Use PerformanceManager for cleanup timer
+            const cleanup = () => {
+                if (this.elements.compact) {
+                    this.elements.compact.classList.remove('resource-generation-pulse');
+                }
+            };
+            
+            if (typeof PerformanceManager !== 'undefined') {
+                PerformanceManager.createTimer(cleanup, 600);
+            } else {
+                setTimeout(cleanup, 600);
+            }
         }
     },
 
@@ -333,9 +343,19 @@ const ResourceUI = {
     showInsufficientResources() {
         if (this.elements.compact) {
             this.elements.compact.classList.add('resource-insufficient');
-            setTimeout(() => {
-                this.elements.compact.classList.remove('resource-insufficient');
-            }, 500);
+            
+            // Use PerformanceManager for cleanup timer
+            const cleanup = () => {
+                if (this.elements.compact) {
+                    this.elements.compact.classList.remove('resource-insufficient');
+                }
+            };
+            
+            if (typeof PerformanceManager !== 'undefined') {
+                PerformanceManager.createTimer(cleanup, 500);
+            } else {
+                setTimeout(cleanup, 500);
+            }
         }
     },
 
@@ -351,17 +371,15 @@ const ResourceUI = {
         return `Metal: +${metal.generation}/min | Energy: +${energy.generation}/min`;
     },
 
-    // Clean up
-    destroy() {
-        const panel = document.getElementById('resourcePanel');
-        if (panel) {
-            panel.remove();
-        }
+    // Add cleanup method for memory management
+    cleanup() {
+        console.log('🧹 Cleaning up Resource UI...');
         
-        const styles = document.getElementById('resource-ui-styles');
-        if (styles) {
-            styles.remove();
-        }
+        // Clear elements references
+        this.elements = {};
+        this.initialized = false;
+        
+        console.log('✅ Resource UI cleanup complete');
     }
 };
 

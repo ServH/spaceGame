@@ -136,17 +136,33 @@ const GameEngine = {
     start() {
         console.log('🎮 Starting game loop...');
         this.isRunning = true;
-        this.gameLoop = setInterval(() => {
-            this.update();
-        }, CONFIG.GAME.UPDATE_INTERVAL);
+        this.lastFrameTime = performance.now();
+        
+        // Use requestAnimationFrame for smooth 60fps instead of setInterval
+        const gameLoop = (currentTime) => {
+            if (!this.isRunning) return;
+            
+            const deltaTime = currentTime - this.lastFrameTime;
+            
+            // Target 60fps (16.67ms per frame)
+            if (deltaTime >= CONFIG.GAME.UPDATE_INTERVAL) {
+                this.update(deltaTime);
+                this.lastFrameTime = currentTime;
+            }
+            
+            // Continue the loop
+            this.gameLoopId = requestAnimationFrame(gameLoop);
+        };
+        
+        this.gameLoopId = requestAnimationFrame(gameLoop);
     },
 
-    update() {
+    update(deltaTime = CONFIG.GAME.UPDATE_INTERVAL) {
         if (!this.isRunning) return;
 
-        // Update planets
+        // Update planets with delta time for smooth animation
         this.planets.forEach(planet => {
-            planet.update(CONFIG.GAME.UPDATE_INTERVAL);
+            planet.update(deltaTime);
         });
         
         // Update fleets
@@ -195,7 +211,19 @@ const GameEngine = {
 
     endGame(message) {
         this.isRunning = false;
-        clearInterval(this.gameLoop);
+        
+        // Clean up the animation frame loop
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+        
+        // Clean up old interval if it exists (fallback)
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+        
         console.log('🏁 Game ended:', message);
         
         if (typeof UI !== 'undefined' && UI.setStatus) {

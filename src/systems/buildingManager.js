@@ -320,13 +320,15 @@ const BuildingManager = {
     // Start update loop with performance optimization
     startUpdateLoop() {
         const update = () => {
+            if (!this.initialized) return; // Stop if manager is not initialized
+            
             this.updateConstructions();
             
-            // Use PerformanceManager timer if available
+            // Use PerformanceManager timer if available for better memory management
             if (typeof PerformanceManager !== 'undefined') {
-                PerformanceManager.createTimer(update, 100);
+                this.updateTimerId = PerformanceManager.createTimer(update, 100);
             } else {
-                setTimeout(update, 100);
+                this.updateTimerId = setTimeout(update, 100);
             }
         };
         update();
@@ -335,6 +337,16 @@ const BuildingManager = {
     // Reset all buildings (for game restart)
     reset() {
         console.log('🏗️ Resetting Building Manager...');
+        
+        // Clean up update timer
+        if (this.updateTimerId) {
+            if (typeof PerformanceManager !== 'undefined') {
+                // PerformanceManager handles cleanup automatically
+            } else {
+                clearTimeout(this.updateTimerId);
+            }
+            this.updateTimerId = null;
+        }
         
         if (GameEngine.planets) {
             GameEngine.planets.forEach(planet => {
@@ -351,6 +363,28 @@ const BuildingManager = {
                 }
             });
         }
+        
+        this.initialized = false;
+    },
+
+    // Add cleanup method for memory management
+    cleanup() {
+        console.log('🧹 Cleaning up Building Manager...');
+        
+        // Clean up timers
+        if (this.updateTimerId) {
+            if (typeof PerformanceManager !== 'undefined') {
+                // PerformanceManager handles cleanup automatically
+            } else {
+                clearTimeout(this.updateTimerId);
+            }
+            this.updateTimerId = null;
+        }
+        
+        // Reset state
+        this.initialized = false;
+        
+        console.log('✅ Building Manager cleanup complete');
     },
 
     // AI building methods for balanced gameplay

@@ -188,14 +188,13 @@ const UI = {
     },
     
     updateLoop() {
+        if (!this.initialized) return; // Stop if UI is not initialized
+        
         this.update();
+        
         if (GameEngine.gameState === 'playing') {
-            // Use performance optimized updates
-            if (typeof PerformanceManager !== 'undefined') {
-                PerformanceManager.createTimer(() => this.updateLoop(), 100);
-            } else {
-                setTimeout(() => this.updateLoop(), 100);
-            }
+            // Use requestAnimationFrame for smooth UI updates instead of setTimeout
+            this.updateLoopId = requestAnimationFrame(() => this.updateLoop());
         }
     },
     
@@ -244,13 +243,40 @@ const UI = {
                     }
                 };
                 
+                // Use PerformanceManager for better memory management
                 if (typeof PerformanceManager !== 'undefined') {
-                    PerformanceManager.createTimer(resetStatus, duration);
+                    this.statusTimerId = PerformanceManager.createTimer(resetStatus, duration);
                 } else {
-                    setTimeout(resetStatus, duration);
+                    this.statusTimerId = setTimeout(resetStatus, duration);
                 }
             }
         }
+    },
+    
+    // Add cleanup method for memory management
+    cleanup() {
+        console.log('🧹 Cleaning up UI...');
+        
+        // Clean up update loop
+        if (this.updateLoopId) {
+            cancelAnimationFrame(this.updateLoopId);
+            this.updateLoopId = null;
+        }
+        
+        // Clean up status timer
+        if (this.statusTimerId) {
+            if (typeof PerformanceManager !== 'undefined') {
+                // PerformanceManager handles cleanup automatically
+            } else {
+                clearTimeout(this.statusTimerId);
+            }
+            this.statusTimerId = null;
+        }
+        
+        // Reset state
+        this.initialized = false;
+        
+        console.log('✅ UI cleanup complete');
     },
     
     // Evolution-specific UI methods

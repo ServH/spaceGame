@@ -1,11 +1,13 @@
-// Animations System - Visual Effects
+// Animations Manager - Optimized for Performance V2.1
 const Animations = {
     activeAnimations: new Map(),
-    
+    animationIdCounter: 0,
+
     init() {
         console.log('✨ Animations system initialized');
     },
 
+    // Create production pulse with memory management
     createProductionPulse(planet) {
         if (!planet.element) return;
         
@@ -36,11 +38,18 @@ const Animations = {
         const svg = document.getElementById('gameCanvas');
         svg.appendChild(pulse);
         
-        setTimeout(() => {
+        // Use PerformanceManager for cleanup timer
+        const cleanup = () => {
             if (pulse.parentNode) {
                 pulse.parentNode.removeChild(pulse);
             }
-        }, 1000);
+        };
+        
+        if (typeof PerformanceManager !== 'undefined') {
+            PerformanceManager.createTimer(cleanup, 1000);
+        } else {
+            setTimeout(cleanup, 1000);
+        }
     },
 
     createConquestProgress(planet) {
@@ -63,6 +72,49 @@ const Animations = {
         // Fleet arrival animation
     },
 
+    // Create fleet movement animation with better performance
+    createFleetAnimation(fleet) {
+        const animationId = `fleet_${this.animationIdCounter++}`;
+        
+        const animation = {
+            id: animationId,
+            fleet: fleet,
+            element: fleet.element,
+            startTime: performance.now(),
+            duration: fleet.travelTime
+        };
+        
+        this.activeAnimations.set(animationId, animation);
+        
+        // Use requestAnimationFrame for smooth animation
+        const animate = (currentTime) => {
+            if (!this.activeAnimations.has(animationId)) return;
+            
+            const elapsed = currentTime - animation.startTime;
+            const progress = Math.min(elapsed / animation.duration, 1);
+            
+            // Update fleet position
+            if (fleet.element && fleet.source && fleet.target) {
+                const x = fleet.source.x + (fleet.target.x - fleet.source.x) * progress;
+                const y = fleet.source.y + (fleet.target.y - fleet.source.y) * progress;
+                
+                fleet.element.setAttribute('cx', x);
+                fleet.element.setAttribute('cy', y);
+            }
+            
+            // Continue animation or cleanup
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.removeAnimation(animationId);
+            }
+        };
+        
+        requestAnimationFrame(animate);
+        return animationId;
+    },
+
+    // Remove animation with proper cleanup
     removeAnimation(id) {
         if (this.activeAnimations.has(id)) {
             const animation = this.activeAnimations.get(id);
@@ -71,6 +123,31 @@ const Animations = {
             }
             this.activeAnimations.delete(id);
         }
+    },
+
+    // Cleanup all animations (for memory management)
+    cleanup() {
+        console.log('🧹 Cleaning up Animations...');
+        
+        // Remove all active animations
+        this.activeAnimations.forEach((animation, id) => {
+            if (animation.element && animation.element.parentNode) {
+                animation.element.parentNode.removeChild(animation.element);
+            }
+        });
+        
+        this.activeAnimations.clear();
+        this.animationIdCounter = 0;
+        
+        console.log('✅ Animations cleanup complete');
+    },
+
+    // Get animation stats for debugging
+    getStats() {
+        return {
+            activeAnimations: this.activeAnimations.size,
+            nextId: this.animationIdCounter
+        };
     }
 };
 
