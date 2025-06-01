@@ -1,4 +1,4 @@
-// Game Engine - Optimized Core Game Loop V3.0 FIXED
+// Game Engine - FIXED Planet Generation and Keyboard Assignment
 const GameEngine = {
     planets: [],
     fleets: [],
@@ -69,41 +69,52 @@ const GameEngine = {
 
     generatePlanets() {
         this.planets = [];
+        const planetsToGenerate = [];
+        const margin = 60;
         
+        // Generate planets with proper distribution
         for (let i = 0; i < CONFIG.PLANETS.COUNT; i++) {
             let planet;
             let attempts = 0;
+            let validPosition = false;
             
-            do {
-                planet = this.createRandomPlanet(i);
+            while (!validPosition && attempts < 100) {
+                const x = margin + Math.random() * (CONFIG.CANVAS.WIDTH - 2 * margin);
+                const y = margin + Math.random() * (CONFIG.CANVAS.HEIGHT - 2 * margin);
+                const capacity = CONFIG.PLANETS.BASE_CAPACITY + Math.random() * 20;
+                
+                planet = new Planet(x, y, capacity, i);
+                
+                // Check distance from existing planets
+                validPosition = planetsToGenerate.every(existingPlanet => {
+                    const distance = Utils.distance(planet, existingPlanet);
+                    return distance >= CONFIG.PLANETS.MIN_DISTANCE;
+                });
+                
                 attempts++;
-            } while (!this.isValidPlanetPosition(planet) && attempts < 50);
+            }
             
-            if (attempts < 50) {
-                this.planets.push(planet);
-                // Planet constructor already creates visual - no need to call createElement
+            if (validPosition) {
+                planetsToGenerate.push(planet);
             }
         }
         
-        // Initialize keyboard assignments after all planets created
-        CONFIG.initKeyboardAssignments(this.planets);
-        console.log(`🌍 Generated ${this.planets.length} planets`);
-    },
-
-    createRandomPlanet(id) {
-        const margin = 60;
-        const x = margin + Math.random() * (CONFIG.CANVAS.WIDTH - 2 * margin);
-        const y = margin + Math.random() * (CONFIG.CANVAS.HEIGHT - 2 * margin);
-        const capacity = CONFIG.PLANETS.BASE_CAPACITY + Math.random() * 20;
+        // Add all valid planets to game
+        this.planets = planetsToGenerate;
         
-        return new Planet(x, y, capacity, id);
-    },
-
-    isValidPlanetPosition(newPlanet) {
-        return this.planets.every(existingPlanet => {
-            const distance = Utils.distance(newPlanet, existingPlanet);
-            return distance >= CONFIG.PLANETS.MIN_DISTANCE;
-        });
+        // CRITICAL: Initialize keyboard assignments AFTER planets are created
+        setTimeout(() => {
+            CONFIG.initKeyboardAssignments(this.planets);
+            
+            // Ensure planet elements show assigned keys
+            this.planets.forEach(planet => {
+                if (planet.assignedKey && planet.keyElement) {
+                    planet.keyElement.textContent = planet.assignedKey.toUpperCase();
+                }
+            });
+        }, 100);
+        
+        console.log(`🌍 Generated ${this.planets.length} planets with proper distribution`);
     },
 
     setupInitialState() {
