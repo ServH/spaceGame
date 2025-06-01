@@ -1,19 +1,18 @@
-// Game Engine - Optimized Core Game Loop V3.0
+// Game Engine - Optimized Core Game Loop V3.0 FIXED
 const GameEngine = {
     planets: [],
     fleets: [],
-    gameState: 'menu', // 'menu', 'playing', 'paused', 'ended'
+    gameState: 'menu',
     gameStartTime: 0,
     lastUpdate: 0,
     animationFrame: null,
     isInitialized: false,
     
-    // Performance optimization flags
     updateFrequency: {
-        ui: 100,        // Update UI every 100ms
-        ai: 500,        // Update AI every 500ms  
-        resources: 1000, // Update resources every 1s
-        physics: 16     // Update physics at 60fps
+        ui: 100,
+        ai: 500,
+        resources: 1000,
+        physics: 16
     },
     lastUpdateTimes: {
         ui: 0,
@@ -30,22 +29,14 @@ const GameEngine = {
         
         console.log('🎮 GameEngine V3.0 initializing with performance optimizations...');
         
-        // Initialize performance manager first
         if (typeof PerformanceManager !== 'undefined') {
             PerformanceManager.init();
             PerformanceManager.centralizeEventListeners();
         }
         
-        // Initialize subsystems
         this.initializeSystems();
-        
-        // Generate game world
         this.generatePlanets();
-        
-        // Set up initial state
         this.setupInitialState();
-        
-        // Start optimized game loop
         this.startOptimizedGameLoop();
         
         this.isInitialized = true;
@@ -56,7 +47,6 @@ const GameEngine = {
     },
 
     initializeSystems() {
-        // Initialize core systems in order with error handling
         const systems = [
             { name: 'ResourceManager', module: ResourceManager },
             { name: 'BuildingManager', module: BuildingManager },
@@ -79,10 +69,6 @@ const GameEngine = {
 
     generatePlanets() {
         this.planets = [];
-        const canvas = document.getElementById('gameCanvas');
-        
-        // Batch planet generation for better performance
-        const planetsToGenerate = [];
         
         for (let i = 0; i < CONFIG.PLANETS.COUNT; i++) {
             let planet;
@@ -94,41 +80,23 @@ const GameEngine = {
             } while (!this.isValidPlanetPosition(planet) && attempts < 50);
             
             if (attempts < 50) {
-                planetsToGenerate.push(planet);
+                this.planets.push(planet);
+                // Planet constructor already creates visual - no need to call createElement
             }
         }
         
-        // Batch DOM operations
-        if (typeof PerformanceManager !== 'undefined') {
-            PerformanceManager.queueAnimation(() => {
-                planetsToGenerate.forEach(planet => {
-                    this.planets.push(planet);
-                    planet.createElement(canvas);
-                });
-                
-                // Initialize keyboard assignments after all planets created
-                CONFIG.initKeyboardAssignments(this.planets);
-                console.log(`🌍 Generated ${this.planets.length} planets with batched DOM updates`);
-            });
-        } else {
-            // Fallback without performance manager
-            planetsToGenerate.forEach(planet => {
-                this.planets.push(planet);
-                planet.createElement(canvas);
-            });
-            CONFIG.initKeyboardAssignments(this.planets);
-            console.log(`🌍 Generated ${this.planets.length} planets`);
-        }
+        // Initialize keyboard assignments after all planets created
+        CONFIG.initKeyboardAssignments(this.planets);
+        console.log(`🌍 Generated ${this.planets.length} planets`);
     },
 
     createRandomPlanet(id) {
         const margin = 60;
         const x = margin + Math.random() * (CONFIG.CANVAS.WIDTH - 2 * margin);
         const y = margin + Math.random() * (CONFIG.CANVAS.HEIGHT - 2 * margin);
-        const radius = CONFIG.PLANETS.RADIUS_MIN + 
-                      Math.random() * (CONFIG.PLANETS.RADIUS_MAX - CONFIG.PLANETS.RADIUS_MIN);
+        const capacity = CONFIG.PLANETS.BASE_CAPACITY + Math.random() * 20;
         
-        return new Planet(id, x, y, radius);
+        return new Planet(x, y, capacity, id);
     },
 
     isValidPlanetPosition(newPlanet) {
@@ -165,11 +133,9 @@ const GameEngine = {
         console.log('🏁 Initial game state set up');
     },
 
-    // 🎯 OPTIMIZED GAME LOOP
     startOptimizedGameLoop() {
         this.lastUpdate = Date.now();
         
-        // Initialize update times
         const now = Date.now();
         Object.keys(this.lastUpdateTimes).forEach(key => {
             this.lastUpdateTimes[key] = now;
@@ -186,10 +152,8 @@ const GameEngine = {
         const now = Date.now();
         const deltaTime = now - this.lastUpdate;
         
-        // Selective updates based on frequency
         this.selectiveUpdate(now, deltaTime);
         
-        // Check victory conditions (less frequently)
         if (now - this.lastUpdateTimes.ui > this.updateFrequency.ui) {
             this.checkVictoryConditions();
         }
@@ -199,25 +163,21 @@ const GameEngine = {
     },
 
     selectiveUpdate(now, deltaTime) {
-        // Always update physics (fleets, animations) at 60fps
         if (now - this.lastUpdateTimes.physics >= this.updateFrequency.physics) {
             this.updatePhysics(deltaTime);
             this.lastUpdateTimes.physics = now;
         }
         
-        // Update UI less frequently
         if (now - this.lastUpdateTimes.ui >= this.updateFrequency.ui) {
             this.updateUI();
             this.lastUpdateTimes.ui = now;
         }
         
-        // Update AI even less frequently
         if (now - this.lastUpdateTimes.ai >= this.updateFrequency.ai) {
             this.updateAI();
             this.lastUpdateTimes.ai = now;
         }
         
-        // Update resources least frequently
         if (now - this.lastUpdateTimes.resources >= this.updateFrequency.resources) {
             this.updateResources(deltaTime);
             this.lastUpdateTimes.resources = now;
@@ -225,17 +185,14 @@ const GameEngine = {
     },
 
     updatePhysics(deltaTime) {
-        // Update planets (ship generation, visual effects)
         this.planets.forEach(planet => {
             if (planet.update) planet.update(deltaTime);
         });
         
-        // Update fleets (movement, collision)
         this.fleets.forEach(fleet => {
             if (fleet.update) fleet.update(deltaTime);
         });
         
-        // Remove completed fleets
         this.fleets = this.fleets.filter(fleet => !fleet.hasArrived);
     },
 
@@ -282,13 +239,12 @@ const GameEngine = {
         
         console.log(`🏆 Game ended: ${winner} wins by ${condition} in ${duration.toFixed(1)}s`);
         
-        // Show victory screen
         if (typeof UI !== 'undefined') {
             UI.showVictoryScreen(winner, condition, duration);
         }
     },
 
-    // Fleet management with pooling
+    // Fleet management
     addFleet(fleet) {
         this.fleets.push(fleet);
     },
@@ -297,25 +253,12 @@ const GameEngine = {
         const index = this.fleets.indexOf(fleet);
         if (index > -1) {
             this.fleets.splice(index, 1);
-            
-            // Return fleet to pool if available
-            if (typeof PerformanceManager !== 'undefined') {
-                PerformanceManager.returnToPool('fleets', fleet);
-            }
         }
     },
 
-    // Planet utilities with caching
+    // Planet utilities
     getPlanetById(id) {
-        // Use cached lookup for better performance
-        if (!this.planetCache) {
-            this.planetCache = new Map();
-            this.planets.forEach(planet => {
-                this.planetCache.set(planet.id, planet);
-            });
-        }
-        
-        return this.planetCache.get(id);
+        return this.planets.find(planet => planet.id === id);
     },
 
     getPlanetByKey(key) {
@@ -356,131 +299,55 @@ const GameEngine = {
     },
 
     restartGame() {
-        // Stop current game
         this.gameState = 'menu';
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
         }
         
-        // Clean up with performance manager
         this.performCleanup();
-        
-        // Reset and restart
         this.isInitialized = false;
         
-        // Use performance manager timer for safer restart
-        if (typeof PerformanceManager !== 'undefined') {
-            PerformanceManager.createTimer(() => this.init(), 100);
-        } else {
-            setTimeout(() => this.init(), 100);
-        }
-        
+        setTimeout(() => this.init(), 100);
         console.log('🔄 Game restarting...');
     },
 
-    // 🎯 OPTIMIZED CLEANUP
     performCleanup() {
-        // Clear planet cache
-        if (this.planetCache) {
-            this.planetCache.clear();
-            this.planetCache = null;
-        }
-        
-        // Clean up planets
         this.planets.forEach(planet => {
             if (planet.cleanup) planet.cleanup();
         });
         this.planets = [];
         
-        // Clean up fleets
         this.fleets.forEach(fleet => {
             if (fleet.cleanup) fleet.cleanup();
         });
         this.fleets = [];
         
-        // Clear canvas efficiently
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
-            // Use performance manager for batched DOM cleanup
-            if (typeof PerformanceManager !== 'undefined') {
-                PerformanceManager.queueAnimation(() => {
-                    const existingPlanets = canvas.querySelectorAll('.planet, .fleet, line[stroke-dasharray]');
-                    existingPlanets.forEach(el => el.remove());
-                });
-            } else {
-                const existingPlanets = canvas.querySelectorAll('.planet, .fleet, line[stroke-dasharray]');
-                existingPlanets.forEach(el => el.remove());
-            }
+            const existingElements = canvas.querySelectorAll('.planet, .fleet, line[stroke-dasharray]');
+            existingElements.forEach(el => el.remove());
         }
         
         console.log('🧹 GameEngine cleanup completed');
     },
 
-    // 🎯 PERFORMANCE MONITORING
     getPerformanceStats() {
-        const stats = {
+        return {
             gameState: this.gameState,
             planets: this.planets.length,
             fleets: this.fleets.length,
             playerPlanets: this.getPlayerPlanets().length,
             aiPlanets: this.getAIPlanets().length,
-            gameTime: this.gameStartTime ? (Date.now() - this.gameStartTime) / 1000 : 0,
-            updateFrequencies: this.updateFrequency
+            gameTime: this.gameStartTime ? (Date.now() - this.gameStartTime) / 1000 : 0
         };
-        
-        // Add performance manager stats if available
-        if (typeof PerformanceManager !== 'undefined') {
-            const perfStats = PerformanceManager.getStats();
-            stats.fps = perfStats.fps;
-            stats.memory = perfStats.memory;
-        }
-        
-        return stats;
     },
 
-    // Adaptive performance adjustment
-    adjustPerformance() {
-        if (typeof PerformanceManager !== 'undefined') {
-            const stats = PerformanceManager.getStats();
-            
-            // Reduce update frequencies if FPS is low
-            if (stats.fps < 30) {
-                this.updateFrequency.ui = 200;
-                this.updateFrequency.ai = 1000;
-                this.updateFrequency.resources = 2000;
-                console.log('⚡ Reduced update frequencies due to low FPS');
-            }
-            
-            // Restore normal frequencies if FPS improves
-            if (stats.fps > 50) {
-                this.updateFrequency.ui = 100;
-                this.updateFrequency.ai = 500;
-                this.updateFrequency.resources = 1000;
-            }
-        }
-    },
-
-    // Debug utilities
-    getGameStats() {
-        return this.getPerformanceStats();
-    },
-
-    // Complete cleanup
     cleanup() {
         this.gameState = 'menu';
         
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
-        }
-        
-        // Clean up systems
-        if (typeof InputManager !== 'undefined' && InputManager.cleanup) {
-            InputManager.cleanup();
-        }
-        
-        if (typeof PerformanceManager !== 'undefined' && PerformanceManager.cleanup) {
-            PerformanceManager.cleanup();
         }
         
         this.performCleanup();
@@ -490,54 +357,16 @@ const GameEngine = {
     }
 };
 
-// Enhanced debug commands with performance monitoring
+// Debug commands
 window.debugGamePerf = {
     stats: () => console.table(GameEngine.getPerformanceStats()),
-    
     restart: () => GameEngine.restartGame(),
-    
     pause: () => GameEngine.pauseGame(),
-    
     resume: () => GameEngine.resumeGame(),
-    
-    performance: () => {
-        if (typeof PerformanceManager !== 'undefined') {
-            console.table(PerformanceManager.getStats());
-        } else {
-            console.log('PerformanceManager not available');
-        }
-    },
-    
-    adjustPerf: () => {
-        GameEngine.adjustPerformance();
-        console.log('Performance adjusted based on current FPS');
-    },
-    
     planets: () => {
         console.log('🌍 Planets:');
         GameEngine.planets.forEach(p => {
             console.log(`  ${p.id}: ${p.owner} (${p.ships} ships, key: ${p.assignedKey})`);
         });
-    },
-    
-    monitor: () => {
-        if (typeof debugPerformance !== 'undefined') {
-            debugPerformance.startMonitor();
-        }
-    },
-    
-    benchmark: () => {
-        console.log('🏃 Running GameEngine benchmark...');
-        const start = performance.now();
-        
-        // Simulate game operations
-        for (let i = 0; i < 1000; i++) {
-            GameEngine.selectiveUpdate(Date.now(), 16);
-        }
-        
-        const duration = performance.now() - start;
-        console.log(`⏱️ GameEngine benchmark: ${duration.toFixed(2)}ms for 1000 updates`);
-        
-        return duration;
     }
 };
