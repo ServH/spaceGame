@@ -1,4 +1,4 @@
-// Game Engine - FIXED Initial State Setup
+// Game Engine - FIXED Animations and Planet Distribution
 const GameEngine = {
     planets: [],
     fleets: [],
@@ -10,7 +10,7 @@ const GameEngine = {
     
     updateFrequency: {
         ui: 100,
-        ai: 500,
+        ai: 3000,  // AI every 3 seconds
         resources: 1000,
         physics: 16
     },
@@ -22,28 +22,21 @@ const GameEngine = {
     },
     
     init() {
-        if (this.isInitialized) {
-            console.warn('⚠️ GameEngine already initialized');
-            return;
-        }
+        if (this.isInitialized) return;
         
-        console.log('🎮 GameEngine V3.0 initializing with performance optimizations...');
-        
-        if (typeof PerformanceManager !== 'undefined') {
-            PerformanceManager.init();
-            PerformanceManager.centralizeEventListeners();
-        }
+        console.log('🎮 GameEngine V3.0 initializing...');
         
         this.initializeSystems();
         this.generatePlanets();
         this.setupInitialState();
-        this.startOptimizedGameLoop();
+        this.startGameLoop();
         
         this.isInitialized = true;
         this.gameState = 'playing';
         this.gameStartTime = Date.now();
+        window.gameStartTime = this.gameStartTime; // For AI
         
-        console.log('✅ GameEngine V3.0 initialized with performance optimizations');
+        console.log('✅ GameEngine V3.0 initialized');
     },
 
     initializeSystems() {
@@ -67,50 +60,49 @@ const GameEngine = {
         });
     },
 
+    // FIXED: Proper planet distribution
     generatePlanets() {
         this.planets = [];
-        const planetsToGenerate = [];
-        const margin = 60;
+        const attempts = [];
+        const minDistance = CONFIG.PLANETS.MIN_DISTANCE;
         
+        // Generate planet positions with proper spacing
         for (let i = 0; i < CONFIG.PLANETS.COUNT; i++) {
-            let planet;
-            let attempts = 0;
             let validPosition = false;
+            let attempt = 0;
+            let x, y, capacity;
             
-            while (!validPosition && attempts < 100) {
-                const x = margin + Math.random() * (CONFIG.CANVAS.WIDTH - 2 * margin);
-                const y = margin + Math.random() * (CONFIG.CANVAS.HEIGHT - 2 * margin);
-                const capacity = CONFIG.PLANETS.BASE_CAPACITY + Math.random() * 20;
+            while (!validPosition && attempt < 200) {
+                x = 80 + Math.random() * (CONFIG.CANVAS.WIDTH - 160);
+                y = 80 + Math.random() * (CONFIG.CANVAS.HEIGHT - 160);
+                capacity = CONFIG.PLANETS.BASE_CAPACITY + Math.random() * 20;
                 
-                planet = new Planet(x, y, capacity, i);
-                
-                validPosition = planetsToGenerate.every(existingPlanet => {
-                    const distance = Utils.distance(planet, existingPlanet);
-                    return distance >= CONFIG.PLANETS.MIN_DISTANCE;
+                validPosition = attempts.every(existing => {
+                    const dx = x - existing.x;
+                    const dy = y - existing.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    return distance >= minDistance;
                 });
                 
-                attempts++;
+                attempt++;
             }
             
             if (validPosition) {
-                planetsToGenerate.push(planet);
+                attempts.push({ x, y });
+                const planet = new Planet(x, y, capacity, i);
+                this.planets.push(planet);
             }
         }
         
-        this.planets = planetsToGenerate;
+        // Assign keyboard keys immediately
+        CONFIG.initKeyboardAssignments(this.planets);
+        this.planets.forEach(planet => {
+            if (planet.assignedKey && planet.keyElement) {
+                planet.keyElement.textContent = planet.assignedKey.toUpperCase();
+            }
+        });
         
-        // Initialize keyboard assignments after planets created
-        setTimeout(() => {
-            CONFIG.initKeyboardAssignments(this.planets);
-            
-            this.planets.forEach(planet => {
-                if (planet.assignedKey && planet.keyElement) {
-                    planet.keyElement.textContent = planet.assignedKey.toUpperCase();
-                }
-            });
-        }, 100);
-        
-        console.log(`🌍 Generated ${this.planets.length} planets with proper distribution`);
+        console.log(`🌍 Generated ${this.planets.length} planets with proper spacing`);
     },
 
     setupInitialState() {
@@ -119,89 +111,81 @@ const GameEngine = {
             return;
         }
         
-        // Player gets first planet - FIXED: Set ships properly
+        // Player gets first planet
         const playerPlanet = this.planets[0];
         playerPlanet.setOwner('player');
-        playerPlanet.ships = BalanceConfig.BASE?.START_SHIPS || CONFIG.PLANETS?.BASE_SHIPS || 15;
+        playerPlanet.ships = 15;
         playerPlanet.updateVisual();
         
-        // AI gets last planet - FIXED: Set ships properly  
+        // AI gets last planet
         const aiPlanet = this.planets[this.planets.length - 1];
         aiPlanet.setOwner('ai');
-        aiPlanet.ships = BalanceConfig.BASE?.START_SHIPS || CONFIG.PLANETS?.BASE_SHIPS || 15;
+        aiPlanet.ships = 15;
         aiPlanet.updateVisual();
         
-        // Initialize player resources
+        // Initialize resources
         if (typeof ResourceManager !== 'undefined') {
-            const startMetal = BalanceConfig.BASE?.START_METAL || CONFIG.RESOURCES?.STARTING_METAL || 75;
-            const startEnergy = BalanceConfig.BASE?.START_ENERGY || CONFIG.RESOURCES?.STARTING_ENERGY || 90;
-            ResourceManager.setPlayerResources(startMetal, startEnergy);
+            ResourceManager.setPlayerResources(75, 90);
         }
         
-        console.log(`🏁 Initial state: Player planet ${playerPlanet.id} (${playerPlanet.ships} ships), AI planet ${aiPlanet.id} (${aiPlanet.ships} ships)`);
+        console.log(`🏁 Player: planet ${playerPlanet.id}, AI: planet ${aiPlanet.id}`);
     },
 
-    startOptimizedGameLoop() {
+    // FIXED: Simplified game loop
+    startGameLoop() {
         this.lastUpdate = Date.now();
-        
-        const now = Date.now();
         Object.keys(this.lastUpdateTimes).forEach(key => {
-            this.lastUpdateTimes[key] = now;
+            this.lastUpdateTimes[key] = Date.now();
         });
-        
-        this.optimizedGameLoop();
+        this.gameLoop();
     },
 
-    optimizedGameLoop() {
-        if (this.gameState !== 'playing') {
-            return;
-        }
+    gameLoop() {
+        if (this.gameState !== 'playing') return;
         
         const now = Date.now();
         const deltaTime = now - this.lastUpdate;
         
-        this.selectiveUpdate(now, deltaTime);
+        // Update physics every frame (fleets, planets)
+        this.updatePhysics(deltaTime);
         
-        if (now - this.lastUpdateTimes.ui > this.updateFrequency.ui) {
-            this.checkVictoryConditions();
-        }
-        
-        this.lastUpdate = now;
-        this.animationFrame = requestAnimationFrame(() => this.optimizedGameLoop());
-    },
-
-    selectiveUpdate(now, deltaTime) {
-        if (now - this.lastUpdateTimes.physics >= this.updateFrequency.physics) {
-            this.updatePhysics(deltaTime);
-            this.lastUpdateTimes.physics = now;
-        }
-        
-        if (now - this.lastUpdateTimes.ui >= this.updateFrequency.ui) {
-            this.updateUI();
-            this.lastUpdateTimes.ui = now;
-        }
-        
+        // Update AI less frequently
         if (now - this.lastUpdateTimes.ai >= this.updateFrequency.ai) {
             this.updateAI();
             this.lastUpdateTimes.ai = now;
         }
         
+        // Update UI periodically
+        if (now - this.lastUpdateTimes.ui >= this.updateFrequency.ui) {
+            this.updateUI();
+            this.checkVictoryConditions();
+            this.lastUpdateTimes.ui = now;
+        }
+        
+        // Update resources
         if (now - this.lastUpdateTimes.resources >= this.updateFrequency.resources) {
             this.updateResources(deltaTime);
             this.lastUpdateTimes.resources = now;
         }
+        
+        this.lastUpdate = now;
+        this.animationFrame = requestAnimationFrame(() => this.gameLoop());
     },
 
+    // FIXED: Direct fleet updates
     updatePhysics(deltaTime) {
+        // Update planets
         this.planets.forEach(planet => {
             if (planet.update) planet.update(deltaTime);
         });
         
-        this.fleets.forEach(fleet => {
-            if (fleet.update) fleet.update(deltaTime);
+        // Update fleets directly
+        this.fleets = this.fleets.filter(fleet => {
+            if (fleet.update) {
+                return fleet.update(); // Returns false when arrived
+            }
+            return false;
         });
-        
-        this.fleets = this.fleets.filter(fleet => !fleet.hasArrived);
     },
 
     updateUI() {
@@ -225,33 +209,23 @@ const GameEngine = {
     checkVictoryConditions() {
         const playerPlanets = this.planets.filter(p => p.owner === 'player').length;
         const aiPlanets = this.planets.filter(p => p.owner === 'ai').length;
-        const totalPlanets = this.planets.length;
         
-        if (typeof BalanceConfig !== 'undefined' && BalanceConfig.checkVictoryConditions) {
-            const victory = BalanceConfig.checkVictoryConditions(
-                playerPlanets, aiPlanets, totalPlanets, 0, 0
-            );
-            
-            if (victory) {
-                this.endGame(victory.winner, victory.condition);
-            }
+        if (playerPlanets === 0) {
+            this.endGame('AI', 'conquest');
+        } else if (aiPlanets === 0) {
+            this.endGame('Player', 'conquest');
+        } else if (playerPlanets === this.planets.length) {
+            this.endGame('Player', 'total_conquest');
         }
     },
 
     endGame(winner, condition) {
         this.gameState = 'ended';
-        
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
         }
-        
         const duration = (Date.now() - this.gameStartTime) / 1000;
-        
-        console.log(`🏆 Game ended: ${winner} wins by ${condition} in ${duration.toFixed(1)}s`);
-        
-        if (typeof UI !== 'undefined') {
-            UI.showVictoryScreen(winner, condition, duration);
-        }
+        console.log(`🏆 ${winner} wins by ${condition} in ${duration.toFixed(1)}s`);
     },
 
     // Fleet management
@@ -288,26 +262,6 @@ const GameEngine = {
         return this.planets.filter(p => p.owner === 'neutral');
     },
 
-    // Game control
-    pauseGame() {
-        if (this.gameState === 'playing') {
-            this.gameState = 'paused';
-            if (this.animationFrame) {
-                cancelAnimationFrame(this.animationFrame);
-            }
-            console.log('⏸️ Game paused');
-        }
-    },
-
-    resumeGame() {
-        if (this.gameState === 'paused') {
-            this.gameState = 'playing';
-            this.lastUpdate = Date.now();
-            this.optimizedGameLoop();
-            console.log('▶️ Game resumed');
-        }
-    },
-
     restartGame() {
         this.gameState = 'menu';
         if (this.animationFrame) {
@@ -318,7 +272,6 @@ const GameEngine = {
         this.isInitialized = false;
         
         setTimeout(() => this.init(), 100);
-        console.log('🔄 Game restarting...');
     },
 
     performCleanup() {
@@ -334,49 +287,20 @@ const GameEngine = {
         
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
-            const existingElements = canvas.querySelectorAll('.planet, .fleet, line[stroke-dasharray]');
-            existingElements.forEach(el => el.remove());
+            canvas.querySelectorAll('.planet, .fleet').forEach(el => el.remove());
         }
-        
-        console.log('🧹 GameEngine cleanup completed');
-    },
-
-    getPerformanceStats() {
-        return {
-            gameState: this.gameState,
-            planets: this.planets.length,
-            fleets: this.fleets.length,
-            playerPlanets: this.getPlayerPlanets().length,
-            aiPlanets: this.getAIPlanets().length,
-            gameTime: this.gameStartTime ? (Date.now() - this.gameStartTime) / 1000 : 0
-        };
-    },
-
-    cleanup() {
-        this.gameState = 'menu';
-        
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-            this.animationFrame = null;
-        }
-        
-        this.performCleanup();
-        this.isInitialized = false;
-        
-        console.log('🧹 Complete GameEngine cleanup finished');
     }
 };
 
-// Debug commands
+// Debug
 window.debugGamePerf = {
-    stats: () => console.table(GameEngine.getPerformanceStats()),
+    stats: () => console.table({
+        planets: GameEngine.planets.length,
+        fleets: GameEngine.fleets.length,
+        gameState: GameEngine.gameState
+    }),
     restart: () => GameEngine.restartGame(),
-    pause: () => GameEngine.pauseGame(),
-    resume: () => GameEngine.resumeGame(),
-    planets: () => {
-        console.log('🌍 Planets:');
-        GameEngine.planets.forEach(p => {
-            console.log(`  ${p.id}: ${p.owner} (${p.ships} ships, key: ${p.assignedKey})`);
-        });
-    }
+    planets: () => GameEngine.planets.forEach(p => 
+        console.log(`${p.id}: ${p.owner} (${p.ships} ships, key: ${p.assignedKey})`)
+    )
 };
