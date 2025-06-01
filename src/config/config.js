@@ -1,4 +1,4 @@
-// Game Configuration - Based on working branch structure
+// Game Configuration - Enhanced planet spacing
 const CONFIG = {
     // Game settings
     GAME: {
@@ -8,19 +8,19 @@ const CONFIG = {
         UPDATE_INTERVAL: 16
     },
 
-    // Planet settings
+    // Planet settings - IMPROVED SPACING
     PLANETS: {
         COUNT: 8,
         MIN_CAPACITY: 20,
         MAX_CAPACITY: 60,
-        MIN_DISTANCE: 120,
+        MIN_DISTANCE: 140,  // Increased from 120
         PRODUCTION_BASE: 0.5,
         PRODUCTION_MULTIPLIER: 0.2,
         CONQUEST_TIME: 2000,
         CAPACITIES: [20, 25, 30, 40, 50, 60, 70],
         SHIP_PRODUCTION_RATE: 0.5,
         
-        // For compatibility with new structure
+        // For compatibility
         RADIUS_MIN: 15,
         RADIUS_MAX: 40,
         BASE_CAPACITY: 50,
@@ -34,7 +34,6 @@ const CONFIG = {
         MIN_SEND: 1
     },
     
-    // For compatibility
     FLEETS: {
         SPEED: 80
     },
@@ -81,7 +80,7 @@ const CONFIG = {
         }
     },
 
-    // Canvas dimensions for compatibility
+    // Canvas dimensions
     CANVAS: {
         WIDTH: 800,
         HEIGHT: 600
@@ -98,7 +97,6 @@ const CONFIG = {
         assignments: {}
     },
 
-    // Energy cost calculation
     calculateMovementCost(ships, distance) {
         const baseCost = ships * this.SHIP_COST.energy.base;
         const distanceCost = distance * ships * this.SHIP_COST.energy.distanceMultiplier;
