@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Game V2.5 - Performance Optimized</title>
+    <title>Space Game V2.5 - Modular Architecture</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -69,15 +69,20 @@
         </svg>
     </div>
 
-    <!-- 🏗️ REFACTORED ARCHITECTURE - Using src/ structure -->
+    <!-- 🏗️ MODULAR ARCHITECTURE V2.2 - Phase 2.2 Implementation -->
     
     <!-- Core Configuration -->
     <script src="src/config/config.js"></script>
     <script src="src/config/balanceConfig.js"></script>
     
-    <!-- Core Engine -->
+    <!-- Core Architecture Systems (Load First) -->
     <script src="src/core/utils.js"></script>
     <script src="src/core/performanceManager.js"></script>
+    <script src="src/core/eventSystem.js"></script>
+    <script src="src/core/stateManager.js"></script>
+    <script src="src/core/dependencyInjector.js"></script>
+    
+    <!-- Core Game Engine -->
     <script src="src/core/gameEngine.js"></script>
     
     <!-- Game Systems -->
@@ -106,13 +111,28 @@
     <script src="src/core/game.js"></script>
 
     <script>
-        console.log('🚀 Space Game V2.5 - Refactored Architecture loaded');
+        console.log('🚀 Space Game V2.5 - Modular Architecture V2.2 loaded');
+        
+        // Initialize core architecture systems
+        if (typeof EventSystem !== 'undefined') {
+            EventSystem.init();
+        }
+        
+        if (typeof StateManager !== 'undefined') {
+            StateManager.init();
+        }
+        
+        if (typeof DependencyInjector !== 'undefined') {
+            DependencyInjector.init();
+        }
         
         // Performance monitoring for development
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            console.log('🔧 Development mode - Performance monitoring enabled');
-            console.log('Use debugGamePerf.monitor() to start performance monitoring');
-            console.log('Use debugPerformance.stats() to see current performance');
+            console.log('🔧 Development mode - Enhanced debugging enabled');
+            console.log('📡 EventSystem.debugListeners() - Show event listeners');
+            console.log('🗃️ StateManager.debugState() - Show current state');
+            console.log('🔌 DependencyInjector.debugDependencies() - Show dependencies');
+            console.log('⚡ debugPerformance.stats() - Performance stats');
         }
     </script>
 </body>
