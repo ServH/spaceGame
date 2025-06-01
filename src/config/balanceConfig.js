@@ -1,124 +1,171 @@
-// Balance Config - V2.5 CONSOLIDATED - Energy Fuel System + Classic Conquest
+// Balance Configuration - Energy Fuel System
 const BalanceConfig = {
-    // Base values for energy fuel system
+    appliedSettings: false,
+    
+    // Core balance settings for Energy Fuel System
     BASE: {
-        START_SHIPS: 15,
         START_METAL: 75,
         START_ENERGY: 90,
-        PRODUCTION_BASE: 0.5,
-        PRODUCTION_MULTIPLIER: 0.2,
-        FLEET_SPEED: 80,
-        CONQUEST_TIME: 2000,
-        AI_DECISION_INTERVAL: 3000,
-        CAPACITY_MULTIPLIER: 1.0
+        START_SHIPS: 15,
+        
+        // Generation rates (per minute)
+        METAL_GENERATION: 1.0,
+        ENERGY_GENERATION: 1.5,
+        
+        // Energy costs for movement
+        ENERGY_BASE_COST: 1.5,        // per ship
+        ENERGY_DISTANCE_COST: 0.005,  // per ship per pixel
+        
+        // Building costs and effects
+        RESEARCH_LAB_COST: { metal: 40, energy: 15 },
+        RESEARCH_LAB_ENERGY_BONUS: 6.0,  // +6 energy/min
+        
+        MINING_COMPLEX_COST: { metal: 80, energy: 0 },
+        MINING_COMPLEX_METAL_BONUS: 2.0, // 2x metal generation
+        
+        SHIPYARD_COST: { metal: 60, energy: 0 },
+        SHIPYARD_SPEED_BONUS: 1.5 // 1.5x ship production
     },
-
-    // Energy Fuel System - Current Implementation
-    ENERGY_FUEL: {
-        name: 'Energy as Fuel System',
-        settings: {
-            startShips: 15,
-            startMetal: 75,
-            startEnergy: 90,
-            metalGeneration: 18,     // per minute per planet
-            energyGeneration: 9,     // per minute per planet
-            shipGeneration: 30,      // ships per minute (FREE)
-            fleetEnergyFormula: '(1.5 × ships) + (distance × ships × 0.005)',
-            researchLabBonus: 6,     // +6 energy/min per lab
-            miningComplexMultiplier: 2.0,  // 2x metal production
-            shipyardBonus: 1.5       // 1.5x ship production
-        },
-        victory: {
-            condition: 'conquest_only',
-            totalControlRequired: true
-        }
+    
+    // Victory conditions
+    VICTORY: {
+        PLANET_CONTROL: 0.75,    // Control 75% of planets
+        SHIP_DOMINANCE: 2.0,     // Have 2x more ships than opponent
+        TIME_LIMIT: 900,         // 15 minutes max game time
+        ELIMINATION: true        // Win by eliminating opponent
     },
-
-    // Fast-paced mode (from legacy balance.js)
-    FAST_GAME: {
-        PRODUCTION_MULTIPLIER: 3.0,
-        FLEET_SPEED_MULTIPLIER: 2.5,
-        CONQUEST_SPEED_MULTIPLIER: 2.0,
-        AI_DECISION_MULTIPLIER: 0.7,
+    
+    // Difficulty scaling
+    DIFFICULTY: {
+        AI_BONUS_SHIPS: 0,       // No bonus ships for AI
+        AI_BONUS_PRODUCTION: 0,  // No production bonus
+        AI_BONUS_ENERGY: 0,      // No energy bonus
+        PLAYER_HANDICAP: 1.0     // No handicap
     },
-
-    // Applied settings (initialized with energy fuel defaults)
-    appliedSettings: null,
-
-    // Initialize balance for energy fuel system
+    
     init() {
-        if (typeof CONFIG === 'undefined') {
-            console.warn('⚠️ CONFIG not available yet, deferring BalanceConfig initialization...');
-            setTimeout(() => this.init(), 100);
-            return;
+        if (this.appliedSettings) return;
+        
+        // Apply settings to CONFIG
+        if (typeof CONFIG !== 'undefined') {
+            CONFIG.RESOURCES.STARTING_METAL = this.BASE.START_METAL;
+            CONFIG.RESOURCES.STARTING_ENERGY = this.BASE.START_ENERGY;
+            CONFIG.PLANETS.BASE_SHIPS = this.BASE.START_SHIPS;
+            CONFIG.RESOURCES.BASE_GENERATION.metal = this.BASE.METAL_GENERATION;
+            CONFIG.RESOURCES.BASE_GENERATION.energy = this.BASE.ENERGY_GENERATION;
+            CONFIG.SHIP_COST.energy.base = this.BASE.ENERGY_BASE_COST;
+            CONFIG.SHIP_COST.energy.distanceMultiplier = this.BASE.ENERGY_DISTANCE_COST;
         }
-
-        this.appliedSettings = {
-            ...this.ENERGY_FUEL.settings,
-            victory: this.ENERGY_FUEL.victory
-        };
-
-        // Apply to CONFIG safely
-        if (CONFIG && CONFIG.PLANETS) {
-            CONFIG.PLANETS.PRODUCTION_BASE = this.BASE.PRODUCTION_BASE;
-            CONFIG.PLANETS.PRODUCTION_MULTIPLIER = this.BASE.PRODUCTION_MULTIPLIER;
-            CONFIG.FLEET.SPEED = this.BASE.FLEET_SPEED;
-            CONFIG.PLANETS.CONQUEST_TIME = this.BASE.CONQUEST_TIME;
-            CONFIG.AI.DECISION_INTERVAL = this.BASE.AI_DECISION_INTERVAL;
-
-            console.log('⚖️ Balance initialized for Energy Fuel System:', {
-                startMetal: this.appliedSettings.startMetal,
-                startEnergy: this.appliedSettings.startEnergy,
-                victoryCondition: 'CONQUEST ONLY',
-                energyFormula: this.appliedSettings.fleetEnergyFormula
-            });
-        } else {
-            console.error('❌ CONFIG object structure not as expected');
-        }
+        
+        this.appliedSettings = true;
+        console.log('⚖️ Balance initialized for Energy Fuel System:', this.BASE);
     },
-
-    // Apply fast-paced settings (legacy function)
-    applyFastSettings() {
-        if (CONFIG) {
-            CONFIG.PLANETS.PRODUCTION_BASE *= this.FAST_GAME.PRODUCTION_MULTIPLIER;
-            CONFIG.PLANETS.PRODUCTION_MULTIPLIER *= this.FAST_GAME.PRODUCTION_MULTIPLIER;
-            CONFIG.FLEET.SPEED *= this.FAST_GAME.FLEET_SPEED_MULTIPLIER;
-            CONFIG.PLANETS.CONQUEST_TIME /= this.FAST_GAME.CONQUEST_SPEED_MULTIPLIER;
-            CONFIG.AI.DECISION_INTERVAL *= this.FAST_GAME.AI_DECISION_MULTIPLIER;
-            
-            console.log('⚡ Fast-paced mode activated - 1-2 minute games');
-        }
-    },
-
-    // Get current settings
-    getCurrentSettings() {
-        return this.appliedSettings;
-    },
-
-    // Check victory conditions - ONLY CONQUEST
+    
+    // Check victory conditions
     checkVictoryConditions(playerPlanets, aiPlanets, totalPlanets, playerShips, aiShips) {
-        if (playerPlanets === totalPlanets) {
-            return { winner: 'player', condition: 'total_conquest' };
+        const planetControlThreshold = Math.ceil(totalPlanets * this.VICTORY.PLANET_CONTROL);
+        
+        // Planet control victory
+        if (playerPlanets >= planetControlThreshold) {
+            return { winner: 'player', condition: 'planet control' };
         }
-        if (aiPlanets === totalPlanets) {
-            return { winner: 'ai', condition: 'total_conquest' };
+        if (aiPlanets >= planetControlThreshold) {
+            return { winner: 'ai', condition: 'planet control' };
         }
-        return null; // Game continues until total conquest
+        
+        // Elimination victory
+        if (this.VICTORY.ELIMINATION) {
+            if (aiPlanets === 0) {
+                return { winner: 'player', condition: 'elimination' };
+            }
+            if (playerPlanets === 0) {
+                return { winner: 'ai', condition: 'elimination' };
+            }
+        }
+        
+        // Ship dominance (if ship counts are provided)
+        if (playerShips > 0 && aiShips > 0) {
+            if (playerShips >= aiShips * this.VICTORY.SHIP_DOMINANCE) {
+                return { winner: 'player', condition: 'ship dominance' };
+            }
+            if (aiShips >= playerShips * this.VICTORY.SHIP_DOMINANCE) {
+                return { winner: 'ai', condition: 'ship dominance' };
+            }
+        }
+        
+        return null; // No victory yet
     },
-
-    // Debug: Show current settings
-    debugCurrentSettings() {
+    
+    // Get building cost
+    getBuildingCost(buildingId) {
+        switch (buildingId) {
+            case 'research_lab':
+                return this.BASE.RESEARCH_LAB_COST;
+            case 'mining_complex':
+                return this.BASE.MINING_COMPLEX_COST;
+            case 'shipyard':
+                return this.BASE.SHIPYARD_COST;
+            default:
+                return { metal: 0, energy: 0 };
+        }
+    },
+    
+    // Get building effect
+    getBuildingEffect(buildingId) {
+        switch (buildingId) {
+            case 'research_lab':
+                return { energyGeneration: this.BASE.RESEARCH_LAB_ENERGY_BONUS };
+            case 'mining_complex':
+                return { metalGeneration: this.BASE.MINING_COMPLEX_METAL_BONUS };
+            case 'shipyard':
+                return { shipProductionRate: this.BASE.SHIPYARD_SPEED_BONUS };
+            default:
+                return {};
+        }
+    },
+    
+    // Calculate energy cost for movement
+    calculateEnergyCost(ships, distance) {
+        const baseCost = ships * this.BASE.ENERGY_BASE_COST;
+        const distanceCost = distance * ships * this.BASE.ENERGY_DISTANCE_COST;
+        return Math.ceil(baseCost + distanceCost);
+    },
+    
+    // Adjust difficulty
+    setDifficulty(level) {
+        switch (level) {
+            case 'easy':
+                this.DIFFICULTY.AI_BONUS_SHIPS = -2;
+                this.DIFFICULTY.AI_BONUS_PRODUCTION = -0.2;
+                this.DIFFICULTY.PLAYER_HANDICAP = 1.2;
+                break;
+            case 'normal':
+                this.DIFFICULTY.AI_BONUS_SHIPS = 0;
+                this.DIFFICULTY.AI_BONUS_PRODUCTION = 0;
+                this.DIFFICULTY.PLAYER_HANDICAP = 1.0;
+                break;
+            case 'hard':
+                this.DIFFICULTY.AI_BONUS_SHIPS = 3;
+                this.DIFFICULTY.AI_BONUS_PRODUCTION = 0.3;
+                this.DIFFICULTY.PLAYER_HANDICAP = 0.8;
+                break;
+        }
+        console.log(`🎯 Difficulty set to ${level}:`, this.DIFFICULTY);
+    },
+    
+    // Debug: Show current balance
+    debugBalance() {
         console.table({
-            'Mode': 'Energy Fuel System - CONQUEST ONLY',
-            'Start Metal': this.appliedSettings?.startMetal || 'Not initialized',
-            'Start Energy': this.appliedSettings?.startEnergy || 'Not initialized',
-            'Metal Generation': this.appliedSettings?.metalGeneration + '/min' || 'Not initialized',
-            'Energy Generation': this.appliedSettings?.energyGeneration + '/min' || 'Not initialized',
-            'Victory Condition': 'TOTAL CONQUEST ONLY',
-            'Energy Formula': this.appliedSettings?.fleetEnergyFormula || 'Not initialized'
+            'Starting Metal': this.BASE.START_METAL,
+            'Starting Energy': this.BASE.START_ENERGY,
+            'Starting Ships': this.BASE.START_SHIPS,
+            'Metal Generation': this.BASE.METAL_GENERATION + '/min',
+            'Energy Generation': this.BASE.ENERGY_GENERATION + '/min',
+            'Energy Base Cost': this.BASE.ENERGY_BASE_COST + '/ship',
+            'Energy Distance Cost': this.BASE.ENERGY_DISTANCE_COST + '/ship/pixel'
         });
     }
 };
 
-// Legacy BALANCE object for backward compatibility
-const BALANCE = BalanceConfig;
+// Make available globally
+window.BalanceConfig = BalanceConfig;
