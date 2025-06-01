@@ -1,4 +1,4 @@
-// Game Engine - FIXED Planet Generation and Keyboard Assignment
+// Game Engine - FIXED Initial State Setup
 const GameEngine = {
     planets: [],
     fleets: [],
@@ -72,7 +72,6 @@ const GameEngine = {
         const planetsToGenerate = [];
         const margin = 60;
         
-        // Generate planets with proper distribution
         for (let i = 0; i < CONFIG.PLANETS.COUNT; i++) {
             let planet;
             let attempts = 0;
@@ -85,7 +84,6 @@ const GameEngine = {
                 
                 planet = new Planet(x, y, capacity, i);
                 
-                // Check distance from existing planets
                 validPosition = planetsToGenerate.every(existingPlanet => {
                     const distance = Utils.distance(planet, existingPlanet);
                     return distance >= CONFIG.PLANETS.MIN_DISTANCE;
@@ -99,14 +97,12 @@ const GameEngine = {
             }
         }
         
-        // Add all valid planets to game
         this.planets = planetsToGenerate;
         
-        // CRITICAL: Initialize keyboard assignments AFTER planets are created
+        // Initialize keyboard assignments after planets created
         setTimeout(() => {
             CONFIG.initKeyboardAssignments(this.planets);
             
-            // Ensure planet elements show assigned keys
             this.planets.forEach(planet => {
                 if (planet.assignedKey && planet.keyElement) {
                     planet.keyElement.textContent = planet.assignedKey.toUpperCase();
@@ -123,25 +119,26 @@ const GameEngine = {
             return;
         }
         
-        // Player gets first planet
+        // Player gets first planet - FIXED: Set ships properly
         const playerPlanet = this.planets[0];
         playerPlanet.setOwner('player');
-        playerPlanet.ships = BalanceConfig.BASE.START_SHIPS;
+        playerPlanet.ships = BalanceConfig.BASE?.START_SHIPS || CONFIG.PLANETS?.BASE_SHIPS || 15;
+        playerPlanet.updateVisual();
         
-        // AI gets last planet
+        // AI gets last planet - FIXED: Set ships properly  
         const aiPlanet = this.planets[this.planets.length - 1];
         aiPlanet.setOwner('ai');
-        aiPlanet.ships = BalanceConfig.BASE.START_SHIPS;
+        aiPlanet.ships = BalanceConfig.BASE?.START_SHIPS || CONFIG.PLANETS?.BASE_SHIPS || 15;
+        aiPlanet.updateVisual();
         
-        // Initialize resources
+        // Initialize player resources
         if (typeof ResourceManager !== 'undefined') {
-            ResourceManager.setPlayerResources(
-                BalanceConfig.BASE.START_METAL, 
-                BalanceConfig.BASE.START_ENERGY
-            );
+            const startMetal = BalanceConfig.BASE?.START_METAL || CONFIG.RESOURCES?.STARTING_METAL || 75;
+            const startEnergy = BalanceConfig.BASE?.START_ENERGY || CONFIG.RESOURCES?.STARTING_ENERGY || 90;
+            ResourceManager.setPlayerResources(startMetal, startEnergy);
         }
         
-        console.log('🏁 Initial game state set up');
+        console.log(`🏁 Initial state: Player planet ${playerPlanet.id} (${playerPlanet.ships} ships), AI planet ${aiPlanet.id} (${aiPlanet.ships} ships)`);
     },
 
     startOptimizedGameLoop() {
@@ -230,12 +227,14 @@ const GameEngine = {
         const aiPlanets = this.planets.filter(p => p.owner === 'ai').length;
         const totalPlanets = this.planets.length;
         
-        const victory = BalanceConfig.checkVictoryConditions(
-            playerPlanets, aiPlanets, totalPlanets, 0, 0
-        );
-        
-        if (victory) {
-            this.endGame(victory.winner, victory.condition);
+        if (typeof BalanceConfig !== 'undefined' && BalanceConfig.checkVictoryConditions) {
+            const victory = BalanceConfig.checkVictoryConditions(
+                playerPlanets, aiPlanets, totalPlanets, 0, 0
+            );
+            
+            if (victory) {
+                this.endGame(victory.winner, victory.condition);
+            }
         }
     },
 
