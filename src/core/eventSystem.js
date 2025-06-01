@@ -1,17 +1,32 @@
-// Event System - Centralized Event Management V1.0
-// Provides decoupled communication between game systems
-
+/**
+ * Event System - Centralized Event Management V1.0
+ * Provides decoupled communication between game systems
+ * 
+ * @namespace EventSystem
+ * @description Centralized event management system for the game
+ */
 const EventSystem = {
     listeners: new Map(),
     eventQueue: [],
     isProcessing: false,
     
+    /**
+     * Initialize the event system
+     * @memberof EventSystem
+     */
     init() {
         console.log('📡 Event System initialized');
         this.setupGlobalErrorHandling();
     },
 
-    // Subscribe to an event
+    /**
+     * Subscribe to an event
+     * @memberof EventSystem
+     * @param {string} eventType - The type of event to listen for
+     * @param {Function} callback - The callback function to execute
+     * @param {Object} [context=null] - The context to bind the callback to
+     * @returns {string} The listener ID for unsubscribing
+     */
     on(eventType, callback, context = null) {
         if (!this.listeners.has(eventType)) {
             this.listeners.set(eventType, []);
@@ -28,7 +43,14 @@ const EventSystem = {
         return listener.id; // Return ID for unsubscribing
     },
 
-    // Subscribe to an event only once
+    /**
+     * Subscribe to an event only once
+     * @memberof EventSystem
+     * @param {string} eventType - The type of event to listen for
+     * @param {Function} callback - The callback function to execute
+     * @param {Object} [context=null] - The context to bind the callback to
+     * @returns {string} The listener ID
+     */
     once(eventType, callback, context = null) {
         const listenerId = this.on(eventType, (...args) => {
             callback.apply(context, args);
@@ -38,7 +60,13 @@ const EventSystem = {
         return listenerId;
     },
 
-    // Unsubscribe from an event
+    /**
+     * Unsubscribe from an event
+     * @memberof EventSystem
+     * @param {string} eventType - The type of event
+     * @param {string} listenerId - The listener ID returned by on() or once()
+     * @returns {boolean} True if successfully unsubscribed
+     */
     off(eventType, listenerId) {
         if (!this.listeners.has(eventType)) return false;
         
@@ -59,7 +87,13 @@ const EventSystem = {
         return false;
     },
 
-    // Emit an event immediately
+    /**
+     * Emit an event immediately
+     * @memberof EventSystem
+     * @param {string} eventType - The type of event to emit
+     * @param {*} [data=null] - The data to pass to listeners
+     * @returns {boolean} True if event was not prevented
+     */
     emit(eventType, data = null) {
         if (!this.listeners.has(eventType)) return;
         
@@ -99,7 +133,12 @@ const EventSystem = {
         return !event.preventDefault;
     },
 
-    // Queue an event for next frame (async)
+    /**
+     * Queue an event for next frame (async)
+     * @memberof EventSystem
+     * @param {string} eventType - The type of event to queue
+     * @param {*} [data=null] - The data to pass to listeners
+     */
     queue(eventType, data = null) {
         this.eventQueue.push({
             type: eventType,

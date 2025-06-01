@@ -414,5 +414,16 @@ window.debugGame = {
         console.log('📡 Events:', EventSystem.getStats());
         console.log('🗃️ State watchers:', StateManager.watchers.size);
         console.log('🔌 Dependencies:', DependencyInjector.getDependencyGraph());
+    },
+    
+    // Code quality metrics
+    codeQuality: () => {
+        console.log('📊 Code Quality Metrics:');
+        console.log('- Modules loaded:', Object.keys(window).filter(k => k.match(/^[A-Z]/)).length);
+        console.log('- Event listeners:', EventSystem.getStats().totalListeners);
+        console.log('- State watchers:', StateManager.watchers.size);
+        console.log('- Dependencies:', DependencyInjector.dependencies.size);
+        console.log('- Performance timers:', typeof PerformanceManager !== 'undefined' ? PerformanceManager.pools.timers.size : 'N/A');
+        console.log('- Active animations:', typeof Animations !== 'undefined' ? Animations.activeAnimations.size : 'N/A');
     }
 };

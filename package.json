@@ -1,0 +1,26 @@
+{
+  "name": "spacegame",
+  "version": "1.0.0",
+  "description": "> **Real-time space strategy evolving from Galcon simplicity to 4X depth**",
+  "main": ".eslintrc.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ServH/spaceGame.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ServH/spaceGame/issues"
+  },
+  "homepage": "https://github.com/ServH/spaceGame#readme",
+  "devDependencies": {
+    "eslint": "^9.28.0"
+  }
+}

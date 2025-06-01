@@ -1,19 +1,31 @@
-// State Manager - Centralized Game State Management V1.0
-// Provides consistent state management across all game systems
-
+/**
+ * State Manager - Centralized Game State Management V1.0
+ * Provides consistent state management across all game systems
+ * 
+ * @namespace StateManager
+ * @description Centralized state management system with reactive watchers
+ */
 const StateManager = {
     state: {},
     watchers: new Map(),
     history: [],
     maxHistorySize: 50,
     
+    /**
+     * Initialize the state manager
+     * @memberof StateManager
+     */
     init() {
         console.log('🗃️ State Manager initialized');
         this.initializeDefaultState();
         this.setupStateWatching();
     },
 
-    // Initialize default game state
+    /**
+     * Initialize default game state structure
+     * @memberof StateManager
+     * @private
+     */
     initializeDefaultState() {
         this.state = {
             // Game meta state
@@ -74,12 +86,28 @@ const StateManager = {
         };
     },
 
-    // Get state value by path (e.g., 'player.resources.metal')
+    /**
+     * Get state value by path using dot notation
+     * @memberof StateManager
+     * @param {string} path - The path to the state value (e.g., 'player.resources.metal')
+     * @returns {*} The state value at the specified path
+     * @example
+     * StateManager.get('player.resources.metal') // Returns metal amount
+     */
     get(path) {
         return this.getNestedValue(this.state, path);
     },
 
-    // Set state value by path
+    /**
+     * Set state value by path using dot notation
+     * @memberof StateManager
+     * @param {string} path - The path to the state value
+     * @param {*} value - The new value to set
+     * @param {boolean} [silent=false] - If true, watchers won't be notified
+     * @returns {boolean} True if the value was changed
+     * @example
+     * StateManager.set('player.resources.metal', 100)
+     */
     set(path, value, silent = false) {
         const oldValue = this.get(path);
         
@@ -100,7 +128,15 @@ const StateManager = {
         return true;
     },
 
-    // Update multiple state values at once
+    /**
+     * Update multiple state values at once
+     * @memberof StateManager
+     * @param {Object} updates - Object with path-value pairs to update
+     * @param {boolean} [silent=false] - If true, watchers won't be notified
+     * @returns {boolean} True if any values were changed
+     * @example
+     * StateManager.update({ 'player.ships': 50, 'ai.ships': 30 })
+     */
     update(updates, silent = false) {
         const changes = [];
         
@@ -127,7 +163,18 @@ const StateManager = {
         return changes.length > 0;
     },
 
-    // Watch for changes to a specific path
+    /**
+     * Watch for changes to a specific path
+     * @memberof StateManager
+     * @param {string} path - The path to watch for changes
+     * @param {Function} callback - Function to call when path changes
+     * @param {Object} [context=null] - Context to bind the callback to
+     * @returns {string} Watcher ID for unsubscribing
+     * @example
+     * const watcherId = StateManager.watch('player.resources', (newValue, oldValue) => {
+     *   console.log('Resources changed:', newValue);
+     * });
+     */
     watch(path, callback, context = null) {
         if (!this.watchers.has(path)) {
             this.watchers.set(path, []);
@@ -144,7 +191,13 @@ const StateManager = {
         return watcher.id;
     },
 
-    // Stop watching a path
+    /**
+     * Stop watching a path
+     * @memberof StateManager
+     * @param {string} path - The path being watched
+     * @param {string} watcherId - The watcher ID returned by watch()
+     * @returns {boolean} True if successfully unwatched
+     */
     unwatch(path, watcherId) {
         if (!this.watchers.has(path)) return false;
         
