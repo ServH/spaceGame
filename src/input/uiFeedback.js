@@ -1,4 +1,4 @@
-// UI Feedback - Tooltips and Notifications
+// UI Feedback - Tooltips and Notifications - FIXED
 const UIFeedback = {
     tooltip: null,
 
@@ -32,7 +32,8 @@ const UIFeedback = {
     showTooltip(planet, x, y) {
         if (!planet || !this.tooltip) return;
         
-        let content = planet.getTooltipContent();
+        // FIX: Use correct method name
+        let content = planet.getTooltipInfo();
         
         // Add movement cost info if planet can be targeted
         if (InputManager.selectedPlanet && InputManager.selectedPlanet.owner === 'player' && 
@@ -125,22 +126,12 @@ const UIFeedback = {
         feedback.textContent = message;
         document.body.appendChild(feedback);
         
-        // Use PerformanceManager timer if available
-        if (typeof PerformanceManager !== 'undefined') {
-            PerformanceManager.createTimer(() => {
-                if (feedback.parentNode) {
-                    feedback.style.animation = 'slideUp 0.3s ease-in';
-                    PerformanceManager.createTimer(() => feedback.remove(), 300);
-                }
-            }, 3000);
-        } else {
-            setTimeout(() => {
-                if (feedback.parentNode) {
-                    feedback.style.animation = 'slideUp 0.3s ease-in';
-                    setTimeout(() => feedback.remove(), 300);
-                }
-            }, 3000);
-        }
+        setTimeout(() => {
+            if (feedback.parentNode) {
+                feedback.style.animation = 'slideUp 0.3s ease-in';
+                setTimeout(() => feedback.remove(), 300);
+            }
+        }, 3000);
     },
 
     showEnergyInsufficientFeedback(needed, available, ships, distance) {
@@ -161,15 +152,9 @@ const UIFeedback = {
         }
         
         if (maxAffordableShips > 0) {
-            if (typeof PerformanceManager !== 'undefined') {
-                PerformanceManager.createTimer(() => {
-                    this.showFeedback(`💡 Puedes enviar máximo ${maxAffordableShips} naves`, 'info');
-                }, 2000);
-            } else {
-                setTimeout(() => {
-                    this.showFeedback(`💡 Puedes enviar máximo ${maxAffordableShips} naves`, 'info');
-                }, 2000);
-            }
+            setTimeout(() => {
+                this.showFeedback(`💡 Puedes enviar máximo ${maxAffordableShips} naves`, 'info');
+            }, 2000);
         }
     },
 
