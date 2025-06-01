@@ -1,4 +1,4 @@
-// Planet class - OPCIÓN A GALCON + Building Visual Indicators
+// Planet class - FIXED for refactored architecture  
 class Planet {
     constructor(x, y, capacity, id) {
         this.id = id;
@@ -8,7 +8,6 @@ class Planet {
         this.ships = 0;
         this.owner = 'neutral';
         
-        // Fix: Use correct CONFIG structure for radius calculation
         const minRadius = CONFIG.PLANETS?.RADIUS_MIN || 20;
         const maxRadius = CONFIG.PLANETS?.RADIUS_MAX || 35;
         this.radius = Utils.lerp(minRadius, maxRadius, capacity / 70);
@@ -18,22 +17,21 @@ class Planet {
         this.isBeingConquered = false;
         this.conqueror = null;
         
-        // OPCIÓN A: FREE ship regeneration
+        // Ship production
         this.lastProduction = Date.now();
-        this.shipProductionRate = CONFIG.PLANETS?.SHIP_PRODUCTION_RATE || 0.5;
+        this.shipProductionRate = CONFIG.PLANETS?.SHIP_PRODUCTION_RATE || 0.8;
         
-        // Action 02: Building system properties
+        // Building system
         this.buildings = {};
         this.shipProductionMultiplier = 1.0;
         this.metalGenerationMultiplier = 1.0;
         this.energyGenerationBonus = 0;
-        this.researchPointsGeneration = 0;
         
-        // AI Resource tracking
+        // AI resources
         this.aiMetal = CONFIG.PLANETS?.BASE_AI_METAL || 120;
         this.lastAIMetalUpdate = Date.now();
         
-        // Visual
+        // Visual elements
         this.element = null;
         this.textElement = null;
         this.keyElement = null;
@@ -77,6 +75,12 @@ class Planet {
         svg.appendChild(this.keyElement);
         
         this.updateVisual();
+    }
+
+    assignKey(key) {
+        this.assignedKey = key;
+        this.keyElement.textContent = key.toUpperCase();
+        CONFIG.KEYBOARD.assignments[key] = this.id;
     }
 
     updateVisual() {
@@ -141,13 +145,6 @@ class Planet {
                 indicator.setAttribute('stroke', '#ffffff');
                 indicator.setAttribute('stroke-width', '1');
                 indicator.setAttribute('opacity', '0.8');
-                
-                const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-                animate.setAttribute('attributeName', 'opacity');
-                animate.setAttribute('values', '0.4;1.0;0.4');
-                animate.setAttribute('dur', '1.5s');
-                animate.setAttribute('repeatCount', 'indefinite');
-                indicator.appendChild(animate);
             } else {
                 indicator.setAttribute('fill', building.visual.color);
                 indicator.setAttribute('stroke', '#ffffff');
@@ -183,8 +180,6 @@ class Planet {
                 this.ships = Math.min(this.capacity, this.ships + 1);
                 this.lastProduction = now;
                 this.updateVisual();
-                
-                if (window.Animations) Animations.createProductionPulse(this);
             }
         }
         
@@ -200,6 +195,25 @@ class Planet {
         }
     }
 
+    updateAIMetal() {
+        const now = Date.now();
+        if (now - this.lastAIMetalUpdate > 6000) {
+            const generation = this.getAIMetalGeneration();
+            this.aiMetal = Math.min(this.aiMetal + generation, this.getAIMetalCapacity());
+            this.lastAIMetalUpdate = now;
+        }
+    }
+
+    getAIMetalGeneration() {
+        let baseGeneration = this.capacity <= 30 ? 15 : this.capacity <= 50 ? 20 : 25;
+        return Math.floor(baseGeneration * this.metalGenerationMultiplier);
+    }
+
+    getAIMetalCapacity() {
+        return this.capacity * 6;
+    }
+
+    // FIXED tooltip method - compatible with new architecture
     getTooltipInfo() {
         const ownerName = this.owner === 'player' ? 'Jugador' : 
                          this.owner === 'ai' ? 'IA' : 'Neutral';
@@ -219,16 +233,17 @@ class Planet {
             }
         }
 
-        if (this.owner === 'player' && typeof ResourceManager !== 'undefined') {
-            const metalGeneration = ResourceManager.getPlanetMetalGeneration(this);
+        // FIXED: Use direct calculation instead of missing ResourceManager methods
+        if (this.owner === 'player') {
+            const baseMetalGeneration = 1.0; // Base from CONFIG.RESOURCES.BASE_GENERATION.metal
+            const metalGeneration = baseMetalGeneration * this.metalGenerationMultiplier;
             info += `<br>Metal: +${metalGeneration.toFixed(1)}/min`;
             if (this.metalGenerationMultiplier > 1) {
                 info += ` ⛏️`;
             }
             
-            const energyGeneration = ResourceManager.getPlanetEnergyGeneration(this);
-            if (energyGeneration > 0) {
-                info += `<br>Energy: +${energyGeneration.toFixed(1)}/min 🔬`;
+            if (this.energyGenerationBonus > 0) {
+                info += `<br>Energy: +${this.energyGenerationBonus.toFixed(1)}/min 🔬`;
             }
         }
 
@@ -265,23 +280,25 @@ class Planet {
         return info;
     }
 
-    // Additional methods
-    updateAIMetal() {
-        const now = Date.now();
-        if (now - this.lastAIMetalUpdate > 6000) {
-            const generation = this.getAIMetalGeneration();
-            this.aiMetal = Math.min(this.aiMetal + generation, this.getAIMetalCapacity());
-            this.lastAIMetalUpdate = now;
+    attack(attackerShips, attacker) {
+        if (this.owner === attacker) {
+            this.ships = Math.min(this.capacity, this.ships + attackerShips);
+        } else {
+            if (attackerShips > this.ships) {
+                this.owner = attacker;
+                this.ships = attackerShips - this.ships;
+                this.lastProduction = Date.now();
+                
+                if (this.owner === 'ai') {
+                    this.aiMetal = 120;
+                    this.lastAIMetalUpdate = Date.now();
+                }
+            } else {
+                this.ships -= attackerShips;
+            }
         }
-    }
-
-    getAIMetalGeneration() {
-        let baseGeneration = this.capacity <= 30 ? 15 : this.capacity <= 50 ? 20 : 25;
-        return Math.floor(baseGeneration * this.metalGenerationMultiplier);
-    }
-
-    getAIMetalCapacity() {
-        return this.capacity * 6;
+        
+        this.updateVisual();
     }
 
     setOwner(newOwner) {
@@ -315,24 +332,17 @@ class Planet {
         return false;
     }
 
-    assignKey(key) {
-        this.assignedKey = key;
-        this.keyElement.textContent = key.toUpperCase();
-        CONFIG.KEYBOARD.assignments[key] = this.id;
-    }
-
-    // Conquest methods
     startConquest(conqueror, fleetSize) {
         this.isBeingConquered = true;
         this.conqueror = conqueror;
-        this.conquestTimer = CONFIG.PLANETS?.CONQUEST_TIME || 1000;
+        this.conquestTimer = 1000;
         this.updateVisual();
     }
 
     completeConquest() {
         if (this.conqueror) {
             this.setOwner(this.conqueror);
-            this.ships = 1; // Minimal garrison
+            this.ships = 1;
         }
         this.isBeingConquered = false;
         this.conqueror = null;
