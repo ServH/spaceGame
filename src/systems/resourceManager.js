@@ -1,165 +1,152 @@
-// Resource Manager - Energy as Fuel System V2.0
+// Resource Manager - FIXED with missing AI methods
 const ResourceManager = {
-    playerResources: {
-        metal: 75,
-        energy: 90
+    resources: {
+        metal: 0,
+        energy: 0
     },
     
-    lastUpdate: Date.now(),
-    initialized: false,
+    aiEnergy: 0,
+    lastUpdate: 0,
+    updateInterval: 1000,
     
     init() {
-        if (this.initialized) return;
-        
-        // Initialize with balance config values
-        if (typeof BalanceConfig !== 'undefined') {
-            this.playerResources.metal = BalanceConfig.BASE.START_METAL;
-            this.playerResources.energy = BalanceConfig.BASE.START_ENERGY;
-        }
-        
+        this.resources.metal = 75;
+        this.resources.energy = 90;
+        this.aiEnergy = 90;
         this.lastUpdate = Date.now();
-        this.initialized = true;
-        
         console.log('⚡ ResourceManager initialized - Energy as Fuel System');
     },
-    
-    // Get current resources
-    getMetal() {
-        return Math.floor(this.playerResources.metal);
-    },
-    
-    getEnergy() {
-        return Math.floor(this.playerResources.energy);
-    },
-    
-    // Set resources (for initialization)
-    setPlayerResources(metal, energy) {
-        this.playerResources.metal = metal;
-        this.playerResources.energy = energy;
-    },
-    
-    // Resource spending
-    spendMetal(amount) {
-        this.playerResources.metal = Math.max(0, this.playerResources.metal - amount);
-        if (typeof ResourceUI !== 'undefined') {
-            ResourceUI.showResourceChange('metal', amount, false);
-        }
-    },
-    
-    spendEnergy(amount) {
-        this.playerResources.energy = Math.max(0, this.playerResources.energy - amount);
-        if (typeof ResourceUI !== 'undefined') {
-            ResourceUI.showResourceChange('energy', amount, false);
-        }
-    },
-    
-    // Resource adding
-    addMetal(amount) {
-        this.playerResources.metal += amount;
-        if (typeof ResourceUI !== 'undefined') {
-            ResourceUI.showResourceChange('metal', amount, true);
-        }
-    },
-    
-    addEnergy(amount) {
-        this.playerResources.energy += amount;
-        if (typeof ResourceUI !== 'undefined') {
-            ResourceUI.showResourceChange('energy', amount, true);
-        }
-    },
-    
-    // ENERGY FUEL SYSTEM: Check if player can afford movement
-    canAffordMovement(ships, distance) {
-        const energyCost = CONFIG.calculateMovementCost(ships, distance);
-        return this.playerResources.energy >= energyCost;
-    },
-    
-    // ENERGY FUEL SYSTEM: Pay for fleet movement
-    payForMovement(ships, distance) {
-        const energyCost = CONFIG.calculateMovementCost(ships, distance);
-        
-        if (this.playerResources.energy >= energyCost) {
-            this.spendEnergy(energyCost);
-            console.log(`⚡ Paid ${energyCost} energy for ${ships} ships moving ${Math.round(distance)}px`);
-            return true;
-        }
-        
-        console.log(`❌ Insufficient energy: need ${energyCost}, have ${this.playerResources.energy}`);
-        return false;
-    },
-    
-    // Resource generation
-    update(deltaTime) {
+
+    update() {
         const now = Date.now();
-        const timeDelta = now - this.lastUpdate;
-        
-        if (timeDelta >= 1000) { // Update every second
-            this.generateResources(timeDelta / 1000);
+        if (now - this.lastUpdate >= this.updateInterval) {
+            this.generateResources();
+            this.updateAIEnergy();
             this.lastUpdate = now;
         }
     },
-    
-    generateResources(seconds) {
-        const rates = this.getGenerationRates();
-        
-        // Generate per second from per minute rates
-        const metalToAdd = (rates.metal / 60) * seconds;
-        const energyToAdd = (rates.energy / 60) * seconds;
-        
-        this.playerResources.metal += metalToAdd;
-        this.playerResources.energy += energyToAdd;
+
+    generateResources() {
+        if (!GameEngine?.planets) return;
+
+        const playerPlanets = GameEngine.planets.filter(p => p.owner === 'player');
+        let totalMetalGen = 0;
+        let totalEnergyGen = 0;
+
+        playerPlanets.forEach(planet => {
+            totalMetalGen += this.getPlanetMetalGeneration(planet);
+            totalEnergyGen += this.getPlanetEnergyGeneration(planet);
+        });
+
+        this.addMetal(totalMetalGen / 60);
+        this.addEnergy(totalEnergyGen / 60);
     },
-    
-    // Calculate current generation rates
-    getGenerationRates() {
-        let metalRate = BalanceConfig?.BASE.METAL_GENERATION || 1.0;
-        let energyRate = BalanceConfig?.BASE.ENERGY_GENERATION || 1.5;
+
+    updateAIEnergy() {
+        if (!GameEngine?.planets) return;
+
+        const aiPlanets = GameEngine.planets.filter(p => p.owner === 'ai');
+        let totalEnergyGen = 0;
+
+        aiPlanets.forEach(planet => {
+            totalEnergyGen += this.getPlanetEnergyGeneration(planet);
+        });
+
+        this.aiEnergy = Math.min(this.aiEnergy + (totalEnergyGen / 60), 400);
+    },
+
+    getPlanetMetalGeneration(planet) {
+        const baseRate = 1.0;
+        return baseRate * (planet.metalGenerationMultiplier || 1.0);
+    },
+
+    getPlanetEnergyGeneration(planet) {
+        const baseRate = 1.5;
+        let bonus = 0;
         
-        // Add bonuses from buildings
-        if (typeof GameEngine !== 'undefined' && GameEngine.planets) {
-            GameEngine.planets.forEach(planet => {
-                if (planet.owner === 'player') {
-                    // Metal generation from mining complexes
-                    if (planet.metalGenerationMultiplier) {
-                        metalRate *= planet.metalGenerationMultiplier;
-                    }
-                    
-                    // Energy generation from research labs
-                    if (planet.energyGenerationBonus) {
-                        energyRate += planet.energyGenerationBonus;
-                    }
-                }
-            });
+        if (planet.buildings?.research_lab && !planet.buildings.research_lab.constructing) {
+            bonus = 6.0;
         }
         
-        return { metal: metalRate, energy: energyRate };
+        return baseRate + bonus;
     },
-    
-    // Check affordability
-    canAfford(cost) {
-        return this.playerResources.metal >= cost.metal && 
-               this.playerResources.energy >= cost.energy;
+
+    // MISSING METHODS for AI
+    getAIEnergy() {
+        return Math.floor(this.aiEnergy);
     },
-    
-    // Reset resources (for game restart)
-    reset() {
-        this.playerResources.metal = BalanceConfig?.BASE.START_METAL || 75;
-        this.playerResources.energy = BalanceConfig?.BASE.START_ENERGY || 90;
-        this.lastUpdate = Date.now();
-        console.log('🔄 Resources reset to starting values');
+
+    canAffordAIMovement(ships, distance) {
+        const cost = CONFIG.calculateMovementCost(ships, distance);
+        return this.aiEnergy >= cost;
     },
-    
-    // Debug info
-    debug() {
-        const rates = this.getGenerationRates();
-        console.table({
-            'Current Metal': this.getMetal(),
-            'Current Energy': this.getEnergy(),
-            'Metal Rate': rates.metal.toFixed(1) + '/min',
-            'Energy Rate': rates.energy.toFixed(1) + '/min'
-        });
+
+    payForAIMovement(ships, distance) {
+        const cost = CONFIG.calculateMovementCost(ships, distance);
+        if (this.canAffordAIMovement(ships, distance)) {
+            this.aiEnergy -= cost;
+            console.log(`⚡ Paid ${cost} energy for ${ships} ships moving ${distance.toFixed(0)}px`);
+            return true;
+        }
+        return false;
+    },
+
+    // Player methods
+    canAffordMovement(ships, distance) {
+        const cost = CONFIG.calculateMovementCost(ships, distance);
+        return this.resources.energy >= cost;
+    },
+
+    spendEnergy(amount) {
+        if (this.resources.energy >= amount) {
+            this.resources.energy -= amount;
+            this.updateUI();
+            return true;
+        }
+        return false;
+    },
+
+    addMetal(amount) {
+        this.resources.metal = Math.min(this.resources.metal + amount, 300);
+        this.updateUI();
+    },
+
+    addEnergy(amount) {
+        this.resources.energy = Math.min(this.resources.energy + amount, 400);
+        this.updateUI();
+    },
+
+    getMetal() {
+        return Math.floor(this.resources.metal);
+    },
+
+    getEnergy() {
+        return Math.floor(this.resources.energy);
+    },
+
+    spendMetal(amount) {
+        if (this.resources.metal >= amount) {
+            this.resources.metal -= amount;
+            this.updateUI();
+            return true;
+        }
+        return false;
+    },
+
+    canAffordMetal(amount) {
+        return this.resources.metal >= amount;
+    },
+
+    setPlayerResources(metal, energy) {
+        this.resources.metal = metal;
+        this.resources.energy = energy;
+        this.updateUI();
+    },
+
+    updateUI() {
+        const resourceDisplay = document.getElementById('mainResourceDisplay');
+        if (resourceDisplay) {
+            resourceDisplay.innerHTML = `🔩 Metal: ${this.getMetal()} (+1.0/min) | ⚡ Energy: ${this.getEnergy()} (+1.5/min)`;
+        }
     }
 };
-
-// Make available globally
-window.ResourceManager = ResourceManager;
